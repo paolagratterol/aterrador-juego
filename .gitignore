@@ -1,0 +1,18 @@
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+ehthumbs.db
+desktop.ini
+.idea/
+.vscode/
+*.swp
+*~
+
+# Dependencias
+node_modules/
+
+# Logs
+*.log
+
+# Mantener three.js vendorizado para que el juego funcione offline
+!vendor/three.min.js

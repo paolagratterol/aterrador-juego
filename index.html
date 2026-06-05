@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>ATERRADOR 3D - El juego de Isabella</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body class="theme-none">
+
+  <!-- Lienzo 3D (un solo WebGLRenderer reutilizado) -->
+  <canvas id="gl"></canvas>
+
+  <!-- Barra superior con monedas -->
+  <div id="topbar" class="topbar hidden">
+    <button class="btn-mini" id="btnHome" title="Inicio">🏠</button>
+    <button class="btn-mini" id="btnBack" title="Atrás">⬅️</button>
+    <div class="coins-box">💰 <span id="coinsLabel">0</span></div>
+    <div class="skin-box">🎀 <span id="skinLabel">Muñeca</span></div>
+  </div>
+
+  <!-- ===================== PANTALLA: INICIO ===================== -->
+  <section id="screen-inicio" class="screen screen-3d active">
+    <h1 class="title-aterrador">ATERRADOR</h1>
+    <p class="subtitle">El juego 3D de <b>Isabella</b> 💖</p>
+    <div class="spacer"></div>
+    <div class="dock">
+      <button class="btn-big pulse" id="btnJugar">▶️ JUGAR</button>
+      <p class="hint">Para edades de 4 a 26 años 🎈 — ¡ahora en 3D!</p>
+    </div>
+  </section>
+
+  <!-- ===================== PANTALLA: ELEGIR TEMA ===================== -->
+  <section id="screen-tema" class="screen">
+    <h2 class="screen-title">Elige el modo de juego</h2>
+    <div class="tema-cards">
+      <button class="tema-card tema-terror" id="btnTemaTerror">
+        <div class="tema-emoji">👹</div>
+        <div class="tema-name">TERRORÍFICO</div>
+        <div class="tema-desc">Morado, negro y gotas de sangre 🩸</div>
+      </button>
+      <button class="tema-card tema-gracioso" id="btnTemaGracioso">
+        <div class="tema-emoji">🤡</div>
+        <div class="tema-name">GRACIOSO</div>
+        <div class="tema-desc">Rosado, azul y globos voladores 🎈</div>
+      </button>
+    </div>
+  </section>
+
+  <!-- ===================== PANTALLA: MENÚ MINI-JUEGOS ===================== -->
+  <section id="screen-menu" class="screen">
+    <div class="floaters" id="floatersMenu"></div>
+    <h2 class="screen-title">Elige un juego</h2>
+    <div class="menu-grid">
+      <button class="menu-card" data-go="puertas"><span class="menu-ico">🚪</span>Puertas</button>
+      <button class="menu-card" data-go="escondite"><span class="menu-ico">🌳</span>Escondite</button>
+      <button class="menu-card" data-go="carrera"><span class="menu-ico">🏃</span>Carrera</button>
+      <button class="menu-card" data-go="preguntas"><span class="menu-ico">❓</span>Preguntas</button>
+      <button class="menu-card" data-go="skins"><span class="menu-ico">🎀</span>Skins</button>
+      <button class="menu-card" data-go="poderes"><span class="menu-ico">✨</span>Poderes</button>
+    </div>
+    <button class="btn-small" id="btnCambiarTema">🎨 Cambiar de modo</button>
+  </section>
+
+  <!-- ===================== PANTALLA: PUERTAS ===================== -->
+  <section id="screen-puertas" class="screen screen-3d">
+    <h2 class="screen-title">🚪 Las 30 Puertas</h2>
+    <p class="screen-info" id="puertasInfo">Toca una puerta... ¿qué saldrá? 👀</p>
+    <div class="spacer"></div>
+    <div class="dock">
+      <div class="reveal-box hidden" id="puertasReveal">
+        <div class="reveal-name" id="puertasMonsterName"></div>
+      </div>
+      <button class="btn-small" id="btnPuertasOtra">🔁 Jugar otra vez</button>
+    </div>
+  </section>
+
+  <!-- ===================== PANTALLA: ESCONDITE ===================== -->
+  <section id="screen-escondite" class="screen screen-3d">
+    <h2 class="screen-title">🌳 El Escondite</h2>
+    <p class="screen-info" id="esconditeInfo">¡Escóndete! Llega a un arbusto con luz verde 💚</p>
+    <div class="spacer"></div>
+    <div class="dock">
+      <div class="escondite-status" id="esconditeStatus"></div>
+      <button class="btn-small hidden" id="btnEsconditeComida">🍔 Crear comida</button>
+      <div class="race-controls">
+        <button class="dpad up" data-dir="up">⬆️</button>
+        <div class="dpad-row">
+          <button class="dpad left" data-dir="left">⬅️</button>
+          <button class="dpad down" data-dir="down">⬇️</button>
+          <button class="dpad right" data-dir="right">➡️</button>
+        </div>
+      </div>
+      <button class="btn-small" id="btnEsconditeOtra">🔁 Jugar otra vez</button>
+    </div>
+  </section>
+
+  <!-- ===================== PANTALLA: CARRERA ===================== -->
+  <section id="screen-carrera" class="screen screen-3d">
+    <h2 class="screen-title">🏃 La Carrera</h2>
+    <p class="screen-info" id="carreraInfo">¡Agarra todas las cajitas y huye del monstruo!</p>
+    <div class="race-hud">
+      <span>💰 <b id="carreraMoney">$0</b></span>
+      <span>📦 <b id="carreraBoxes">0/0</b></span>
+      <span>⏱️ <b id="carreraTime">30</b></span>
+    </div>
+    <div class="spacer"></div>
+    <div class="dock">
+      <div class="reveal-box hidden" id="carreraOver">
+        <div class="reveal-name" id="carreraResult"></div>
+      </div>
+      <div class="race-controls">
+        <button class="dpad up" data-dir="up">⬆️</button>
+        <div class="dpad-row">
+          <button class="dpad left" data-dir="left">⬅️</button>
+          <button class="dpad down" data-dir="down">⬇️</button>
+          <button class="dpad right" data-dir="right">➡️</button>
+        </div>
+      </div>
+      <p class="hint">Flechas/WASD en la compu. En tablet: botones o toca la pista.</p>
+      <button class="btn-small" id="btnCarreraOtra">🔁 Correr otra vez</button>
+    </div>
+  </section>
+
+  <!-- ===================== PANTALLA: PREGUNTAS ===================== -->
+  <section id="screen-preguntas" class="screen screen-3d">
+    <h2 class="screen-title">❓ Preguntas</h2>
+    <div class="quiz-bubble" id="quizBubble">...</div>
+    <div class="spacer"></div>
+    <div class="dock">
+      <div class="quiz-options" id="quizOptions"></div>
+      <div class="quiz-score">Aciertos: <b id="quizScore">0</b></div>
+      <button class="btn-small hidden" id="btnPreguntasOtra">🔁 Jugar otra vez</button>
+    </div>
+  </section>
+
+  <!-- ===================== PANTALLA: SKINS ===================== -->
+  <section id="screen-skins" class="screen screen-3d">
+    <h2 class="screen-title">🎀 Galería de Skins (3D)</h2>
+    <p class="screen-info">¡Elige cómo se ve tu muñeca! (Es solo decoración, no cuesta dinero real)</p>
+    <div class="spacer"></div>
+    <div class="dock">
+      <div class="skins-grid" id="skinsGrid"></div>
+    </div>
+  </section>
+
+  <!-- ===================== PANTALLA: PODERES ===================== -->
+  <section id="screen-poderes" class="screen">
+    <h2 class="screen-title">✨ Tienda de Poderes</h2>
+    <p class="screen-info">Compra con las monedas que ganas en la Carrera 💰</p>
+    <div class="powers-grid" id="powersGrid"></div>
+  </section>
+
+  <!-- Mensaje grande (toast / overlay) -->
+  <div id="bigMsg" class="big-msg hidden"><div class="big-msg-inner" id="bigMsgInner"></div></div>
+
+  <!-- Cara aterradora en pantalla (overlay para sustos) -->
+  <div id="scareOverlay" class="scare-overlay hidden">
+    <div class="scare-face">
+      <div class="scare-eyes">
+        <div class="scare-eye"><div class="scare-pupil"></div></div>
+        <div class="scare-eye"><div class="scare-pupil"></div></div>
+      </div>
+      <div class="scare-mouth">
+        <div class="scare-teeth"></div>
+        <div class="scare-blood"></div>
+      </div>
+    </div>
+    <div class="scare-text" id="scareText">AH AH AH</div>
+  </div>
+
+  <script src="vendor/three.min.js"></script>
+  <script src="models.js"></script>
+  <script src="scenes.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>

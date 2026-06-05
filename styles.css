@@ -1,0 +1,311 @@
+/* ============================================================
+   ATERRADOR 3D - Estilos
+   Lienzo 3D de fondo + interfaz (overlays) encima.
+   Dos temas: TERRORÍFICO (morado/negro) y GRACIOSO (rosa/azul).
+   ============================================================ */
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  margin: 0; padding: 0; height: 100%;
+  font-family: "Comic Sans MS", "Trebuchet MS", "Segoe UI", sans-serif;
+  overflow: hidden;
+}
+body {
+  min-height: 100vh;
+  color: #fff;
+  transition: background 0.6s ease, color 0.6s ease;
+  background: #1a1030;
+}
+
+/* ---------- Variables por tema ---------- */
+.theme-none     { --accent: #b388ff; --accent2: #ff79c6; --card: #2d1b4e; --card-border: #7c4dff; --text: #ffffff; --bg1:#2b1055; --bg2:#120024; }
+.theme-terror   { --accent: #a64dff; --accent2: #ff2e63; --card: #2a0a45; --card-border: #9b30ff; --text: #f3e8ff; --bg1:#3a006e; --bg2:#050008; }
+.theme-gracioso { --accent: #ff7ac3; --accent2: #4db8ff; --card: #fff3fb; --card-border: #ff9ed6; --text: #5a2a66; --bg1:#7ec8ff; --bg2:#ffd6f0; }
+
+body.theme-terror   { background: radial-gradient(circle at 50% 0%, var(--bg1), var(--bg2)); color: var(--text); }
+body.theme-gracioso { background: linear-gradient(180deg, var(--bg1) 0%, #bfe3ff 40%, var(--bg2) 100%); color: var(--text); }
+body.theme-none     { background: radial-gradient(circle at 50% 10%, var(--bg1), var(--bg2)); color: var(--text); }
+
+/* ---------- Lienzo 3D ---------- */
+#gl {
+  position: fixed; inset: 0;
+  width: 100vw; height: 100vh;
+  display: block; z-index: 0;
+  touch-action: none;
+}
+
+/* ---------- Pantallas ---------- */
+.screen {
+  display: none; position: relative; z-index: 1;
+  min-height: 100vh; padding: 64px 16px 24px;
+  flex-direction: column; align-items: center; text-align: center;
+}
+.screen.active { display: flex; }
+.hidden { display: none !important; }
+.spacer { flex: 1 1 auto; }
+
+/* Las pantallas con 3D dejan pasar los toques al lienzo, salvo en sus controles */
+.screen-3d { pointer-events: none; }
+.screen-3d .screen-title,
+.screen-3d .screen-info,
+.screen-3d .hint,
+.screen-3d .race-hud,
+.screen-3d button,
+.screen-3d .reveal-box,
+.screen-3d .escondite-status,
+.screen-3d .quiz-bubble,
+.screen-3d .quiz-options,
+.screen-3d .quiz-score,
+.screen-3d .skins-grid { pointer-events: auto; }
+
+/* Contenedor de controles anclado abajo */
+.dock {
+  position: fixed; left: 0; right: 0; bottom: 10px;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  z-index: 6; pointer-events: none;
+}
+.dock > * { pointer-events: auto; }
+
+/* ---------- Barra superior ---------- */
+.topbar {
+  position: fixed; top: 0; left: 0; right: 0; height: 54px;
+  display: flex; align-items: center; gap: 8px; padding: 0 10px;
+  background: rgba(0,0,0,0.35); backdrop-filter: blur(4px); z-index: 50;
+}
+body.theme-gracioso .topbar { background: rgba(255,255,255,0.5); }
+.coins-box, .skin-box {
+  background: var(--card); border: 2px solid var(--card-border);
+  border-radius: 20px; padding: 4px 12px; font-weight: bold; font-size: 15px; color: var(--text);
+}
+.skin-box { margin-left: auto; max-width: 45vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ---------- Títulos ---------- */
+.title-aterrador {
+  font-size: clamp(40px, 13vw, 110px); margin: 6px 0 0; letter-spacing: 3px;
+  background: linear-gradient(90deg, #ff2e63, #ff79c6, #b388ff);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  text-shadow: 0 0 24px rgba(255,46,99,0.5); animation: titleWobble 2.5s ease-in-out infinite;
+}
+@keyframes titleWobble { 0%,100%{transform:rotate(-1.5deg) scale(1);} 50%{transform:rotate(1.5deg) scale(1.03);} }
+.subtitle { font-size: 20px; margin: 4px 0 6px; text-shadow: 0 2px 8px rgba(0,0,0,0.5); }
+.screen-title {
+  font-size: clamp(24px, 6.5vw, 42px); margin: 2px 0 6px;
+  text-shadow: 0 2px 10px rgba(0,0,0,0.45); background: rgba(0,0,0,0.18);
+  padding: 2px 14px; border-radius: 16px;
+}
+body.theme-gracioso .screen-title { background: rgba(255,255,255,0.4); }
+.screen-info {
+  font-size: 15px; max-width: 600px; margin: 0 auto 8px;
+  background: rgba(0,0,0,0.25); padding: 6px 12px; border-radius: 14px;
+}
+body.theme-gracioso .screen-info { background: rgba(255,255,255,0.5); }
+.hint {
+  font-size: 13px; opacity: 0.95; margin: 4px 0 0;
+  background: rgba(0,0,0,0.25); padding: 4px 10px; border-radius: 10px; max-width: 90vw;
+}
+body.theme-gracioso .hint { background: rgba(255,255,255,0.5); }
+
+/* ---------- Botones ---------- */
+.btn-big {
+  font-family: inherit; font-size: 30px; font-weight: bold; color: #fff; border: none;
+  border-radius: 40px; padding: 18px 48px; margin: 6px 0; cursor: pointer;
+  background: linear-gradient(135deg, #ff2e63, #ff79c6);
+  box-shadow: 0 8px 0 #b3003a, 0 12px 24px rgba(0,0,0,0.4); transition: transform 0.08s;
+}
+.btn-big:active { transform: translateY(6px); box-shadow: 0 2px 0 #b3003a; }
+.pulse { animation: pulse 1.2s ease-in-out infinite; }
+@keyframes pulse { 0%,100%{transform:scale(1);} 50%{transform:scale(1.06);} }
+
+.btn-small {
+  font-family: inherit; font-size: 18px; font-weight: bold; color: #fff; border: none;
+  border-radius: 26px; padding: 12px 26px; margin: 4px 6px; cursor: pointer;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  box-shadow: 0 5px 0 rgba(0,0,0,0.3); transition: transform 0.08s;
+}
+.btn-small:active { transform: translateY(3px); box-shadow: 0 2px 0 rgba(0,0,0,0.3); }
+
+.btn-mini {
+  font-size: 20px; background: var(--card); border: 2px solid var(--card-border);
+  border-radius: 14px; width: 40px; height: 40px; cursor: pointer; color: var(--text);
+}
+.btn-mini:active { transform: scale(0.9); }
+
+/* ---------- Tema cards ---------- */
+.tema-cards { display: flex; flex-wrap: wrap; gap: 22px; justify-content: center; margin-top: 20px; }
+.tema-card {
+  font-family: inherit; width: 260px; border-radius: 28px; padding: 26px 18px;
+  cursor: pointer; border: 4px solid #fff; color: #fff; transition: transform 0.12s;
+}
+.tema-card:active { transform: scale(0.96); }
+.tema-card:hover { transform: translateY(-6px) scale(1.02); }
+.tema-terror { background: radial-gradient(circle at 50% 30%, #6a00b0, #11001f); box-shadow: 0 0 30px #9b30ff; }
+.tema-gracioso { background: linear-gradient(160deg, #7ec8ff, #ff9ed6); box-shadow: 0 0 30px #ff9ed6; color: #5a2a66; }
+.tema-emoji { font-size: 70px; }
+.tema-name { font-size: 28px; font-weight: bold; margin: 8px 0; letter-spacing: 1px; }
+.tema-desc { font-size: 15px; }
+
+/* ---------- Menú grid ---------- */
+.menu-grid { display: grid; grid-template-columns: repeat(2, minmax(130px, 200px)); gap: 16px; margin: 10px 0 16px; }
+.menu-card {
+  font-family: inherit; font-size: 20px; font-weight: bold; color: var(--text);
+  background: var(--card); border: 3px solid var(--card-border); border-radius: 22px;
+  padding: 20px 10px; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; gap: 8px; transition: transform 0.1s;
+}
+.menu-card:active { transform: scale(0.94); }
+.menu-card:hover { transform: translateY(-4px); }
+.menu-ico { font-size: 44px; }
+
+/* ---------- Banners (reveal / fin de carrera) ---------- */
+.reveal-box {
+  background: var(--card); border: 3px solid var(--card-border);
+  border-radius: 22px; padding: 12px 22px; color: var(--text); max-width: 92vw;
+}
+.reveal-name { font-size: 20px; font-weight: bold; }
+
+/* ---------- Escondite ---------- */
+.escondite-status { font-size: 17px; font-weight: bold; min-height: 24px;
+  background: rgba(0,0,0,0.3); padding: 6px 14px; border-radius: 14px; }
+body.theme-gracioso .escondite-status { background: rgba(255,255,255,0.6); color:#5a2a66; }
+
+/* ---------- Carrera HUD + controles ---------- */
+.race-hud {
+  display: flex; gap: 18px; font-size: 18px; background: var(--card);
+  border: 2px solid var(--card-border); border-radius: 18px; padding: 8px 18px;
+  margin: 4px 0 8px; color: var(--text);
+}
+.race-controls { user-select: none; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.dpad-row { display: flex; gap: 10px; justify-content: center; }
+.dpad {
+  font-size: 26px; width: 66px; height: 58px; border: none; border-radius: 16px;
+  background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; cursor: pointer;
+  box-shadow: 0 4px 0 rgba(0,0,0,0.3);
+}
+.dpad:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(0,0,0,0.3); }
+
+/* ---------- Preguntas ---------- */
+.quiz-bubble {
+  position: relative; background: #fff; color: #333; border-radius: 18px;
+  padding: 14px 18px; font-size: 18px; font-weight: bold; max-width: 360px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3); margin-top: 4px;
+}
+.quiz-options { display: flex; flex-direction: column; gap: 8px; width: 100%; max-width: 420px; }
+.quiz-opt {
+  font-family: inherit; font-size: 18px; font-weight: bold; padding: 13px; border-radius: 16px; cursor: pointer;
+  border: 3px solid var(--card-border); background: var(--card); color: var(--text); transition: transform 0.08s;
+}
+.quiz-opt:active { transform: scale(0.96); }
+.quiz-opt.correct { background: #2ecc71; color: #fff; border-color:#27ae60; }
+.quiz-opt.wrong { background: #e74c3c; color: #fff; border-color:#c0392b; }
+.quiz-score { font-size: 17px; background: rgba(0,0,0,0.3); padding: 4px 12px; border-radius: 12px; }
+body.theme-gracioso .quiz-score { background: rgba(255,255,255,0.6); color:#5a2a66; }
+
+/* ---------- Skins (chips) ---------- */
+.skins-grid { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; max-width: 640px; }
+.skin-chip {
+  font-family: inherit; font-size: 16px; font-weight: bold; cursor: pointer;
+  border: 3px solid var(--card-border); background: var(--card); color: var(--text);
+  border-radius: 18px; padding: 10px 16px; transition: transform 0.08s;
+}
+.skin-chip:active { transform: scale(0.94); }
+.skin-chip.selected { background: #f1c40f; color: #333; border-color: #f39c12; }
+.skin-chip.locked { opacity: 0.92; border-style: dashed; }
+.skin-chip:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ---------- Poderes ---------- */
+.powers-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; width: 100%; max-width: 640px; }
+.power-card {
+  background: var(--card); border: 3px solid var(--card-border); border-radius: 20px;
+  padding: 14px 10px; color: var(--text); display: flex; flex-direction: column; align-items: center; gap: 8px;
+}
+.power-ico { font-size: 50px; }
+.power-name { font-size: 16px; font-weight: bold; }
+.power-price { font-size: 15px; opacity: 0.9; }
+.card-btn {
+  font-family: inherit; font-size: 15px; font-weight: bold; border: none; border-radius: 16px;
+  padding: 8px 14px; cursor: pointer; background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff;
+}
+.card-btn:active { transform: scale(0.94); }
+.card-btn.owned { background: #2ecc71; }
+.card-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* ---------- Floaters (globos / sangre) en pantallas sin 3D ---------- */
+.floaters { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+.balloon { position: absolute; font-size: 40px; bottom: -60px; animation: floatUp linear infinite; }
+@keyframes floatUp {
+  0% { transform: translateY(0) translateX(0) rotate(0); opacity: 0.9; }
+  50% { transform: translateY(-55vh) translateX(20px) rotate(8deg); }
+  100% { transform: translateY(-115vh) translateX(-20px) rotate(-8deg); opacity: 0.7; }
+}
+.blood { position: absolute; top: -40px; font-size: 26px; animation: bloodFall linear infinite; }
+@keyframes bloodFall { 0% { transform: translateY(0); opacity: 0.9; } 100% { transform: translateY(115vh); opacity: 0.4; } }
+
+/* ---------- Mensaje grande ---------- */
+.big-msg {
+  position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+  background: rgba(0,0,0,0.75); z-index: 100; animation: fadeIn 0.2s;
+}
+@keyframes fadeIn { from{opacity:0;} to{opacity:1;} }
+.big-msg-inner {
+  background: linear-gradient(135deg, #ff2e63, #b388ff); border: 5px solid #fff; border-radius: 26px;
+  padding: 28px 34px; font-size: 28px; font-weight: bold; color: #fff; text-align: center; max-width: 90vw;
+  box-shadow: 0 0 40px rgba(255,46,99,0.8); animation: monsterPop 0.4s;
+}
+@keyframes monsterPop { 0%{transform:scale(0) rotate(-30deg);} 70%{transform:scale(1.2);} 100%{transform:scale(1);} }
+
+/* ---------- Cara aterradora (overlay de susto) ---------- */
+.scare-overlay {
+  position: fixed; inset: 0; z-index: 200;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px;
+  background: radial-gradient(circle at 50% 45%, #3a0010 0%, #120006 70%, #000 100%);
+  cursor: pointer;
+}
+.scare-overlay.scare-anim { animation: scareShake 0.12s linear 0s 14, scareIn 0.25s ease; }
+@keyframes scareIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes scareShake {
+  0% { transform: translate(0,0); }
+  25% { transform: translate(-7px, 4px); }
+  50% { transform: translate(6px, -5px); }
+  75% { transform: translate(-5px, -3px); }
+  100% { transform: translate(4px, 5px); }
+}
+.scare-face {
+  position: relative; width: min(70vw, 320px); height: min(70vw, 320px);
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 40%, #d10000 0%, #7a0010 60%, #3a0008 100%);
+  box-shadow: 0 0 70px 20px rgba(255,0,30,0.7), inset 0 0 50px #2a0000;
+  animation: scarePulse 0.5s ease-in-out infinite;
+}
+@keyframes scarePulse { 0%,100%{transform:scale(1);} 50%{transform:scale(1.06);} }
+.scare-eyes { position: absolute; top: 28%; left: 0; right: 0; display: flex; justify-content: center; gap: 16%; }
+.scare-eye {
+  width: 22%; height: 0; padding-bottom: 22%; position: relative;
+  background: radial-gradient(circle at 50% 50%, #fff700 0%, #ffd000 40%, #ff6a00 100%);
+  border-radius: 50%; box-shadow: 0 0 24px #ffd000;
+}
+.scare-pupil {
+  position: absolute; top: 28%; left: 32%; width: 36%; height: 50%;
+  background: #000; border-radius: 50%;
+}
+.scare-mouth {
+  position: absolute; bottom: 16%; left: 50%; transform: translateX(-50%);
+  width: 52%; height: 26%; background: #1a0000; border-radius: 0 0 50% 50% / 0 0 100% 100%;
+  overflow: hidden; box-shadow: inset 0 4px 14px #000;
+}
+.scare-teeth {
+  position: absolute; top: 0; left: 0; right: 0; height: 38%;
+  background:
+    repeating-linear-gradient(90deg, #fff 0, #fff 11%, transparent 11%, transparent 14%);
+  clip-path: polygon(0 0,100% 0,100% 40%,92% 100%,84% 40%,76% 100%,68% 40%,60% 100%,52% 40%,44% 100%,36% 40%,28% 100%,20% 40%,12% 100%,4% 40%,0 100%);
+}
+.scare-blood {
+  position: absolute; bottom: 0; left: 0; right: 0; height: 45%;
+  background: linear-gradient(180deg, #c1001b 0%, #7a0010 100%);
+  border-radius: 50% 50% 0 0;
+}
+.scare-text {
+  font-size: clamp(34px, 12vw, 90px); font-weight: bold; color: #ff2e2e; letter-spacing: 4px;
+  text-shadow: 0 0 18px #ff0000, 0 0 4px #fff; animation: scareTextJump 0.3s ease-in-out infinite alternate;
+}
+@keyframes scareTextJump { from { transform: scale(1) rotate(-3deg); } to { transform: scale(1.12) rotate(3deg); } }
