@@ -471,6 +471,7 @@
     var seeker = M.buildMonster(theme === "gracioso" ? "payaso" : (Math.random() < 0.4 ? "aterrador" : "ojos"), theme);
     seeker.position.set(0, 0, -3);
     seeker.userData.target = new T.Vector3(0, 0, -3);
+    seeker.userData.distracted = 0;
     scene.add(seeker);
 
     // PODER: torre para esconderse (escondite extra garantizado)
