@@ -23,9 +23,14 @@
   <section id="screen-inicio" class="screen screen-3d active">
     <h1 class="title-aterrador">ATERRADOR</h1>
     <p class="subtitle">El juego 3D de <b>Isabella</b> 💖</p>
+    <div id="introOverlay" class="intro-overlay">
+      <p id="introPhaseLabel" class="intro-phase-label">¡Minions!</p>
+      <p class="intro-skip-hint">Toca para saltar ⏭️</p>
+      <p class="intro-coin-hint hidden" id="introCoinHint">🪙 Cuesta monedas</p>
+    </div>
     <div class="spacer"></div>
     <div class="dock">
-      <button class="btn-big pulse" id="btnJugar">▶️ JUGAR</button>
+      <button class="btn-big pulse hidden" id="btnJugar">▶️ JUGAR</button>
       <p class="hint">Para edades de 4 a 26 años 🎈 — ¡ahora en 3D!</p>
     </div>
   </section>
@@ -44,6 +49,11 @@
         <div class="tema-name">GRACIOSO</div>
         <div class="tema-desc">Rosado, azul y globos voladores 🎈</div>
       </button>
+      <button class="tema-card tema-medio" id="btnTemaMedio">
+        <div class="tema-emoji">😈🎈</div>
+        <div class="tema-name">Modo Medio (Complicado)</div>
+        <div class="tema-desc">Mezcla de miedo y reto — morado/rosa con desafíos 💜</div>
+      </button>
     </div>
   </section>
 
@@ -60,6 +70,92 @@
       <button class="menu-card" data-go="poderes"><span class="menu-ico">✨</span>Poderes</button>
     </div>
     <button class="btn-small" id="btnCambiarTema">🎨 Cambiar de modo</button>
+  </section>
+
+  <!-- ===================== PANTALLA: MENÚ MODO MEDIO ===================== -->
+  <section id="screen-menu-medio" class="screen">
+    <div class="floaters" id="floatersMenuMedio"></div>
+    <h2 class="screen-title">Modo Medio — Elige un reto</h2>
+    <p class="screen-info">Tres juegos nuevos: enfrentamiento, carrera y pintar 🎨</p>
+    <div class="menu-grid menu-grid-medio">
+      <button class="menu-card" data-go="enfrentamiento"><span class="menu-ico">🔪</span>Enfrentamiento<br><small>Nivel 1</small></button>
+      <button class="menu-card" data-go="carrerameta"><span class="menu-ico">🏁</span>Carrera Meta<br><small>Fácil</small></button>
+      <button class="menu-card menu-card-hard" data-go="pintar"><span class="menu-ico">🎨</span>Pintar Igual<br><small>Difícil ⚠️</small></button>
+    </div>
+    <button class="btn-small" id="btnCambiarTemaMedio">🎨 Cambiar de modo</button>
+  </section>
+
+  <!-- ===================== PANTALLA: ENFRENTAMIENTO ===================== -->
+  <section id="screen-enfrentamiento" class="screen screen-3d">
+    <h2 class="screen-title">🔪 Enfrentamiento</h2>
+    <p class="screen-info" id="enfrentamientoInfo">¡Corta la cabeza del monstruo cuando esté cerca!</p>
+    <div class="confront-hud">
+      <span>⏱️ <b id="enfrentamientoTimer">12</b>s</span>
+      <span id="enfrentamientoRange" class="range-hint hidden">¡AHORA! ✂️</span>
+    </div>
+    <div class="spacer"></div>
+    <div class="dock">
+      <div class="reveal-box hidden" id="enfrentamientoResult">
+        <div class="reveal-name" id="enfrentamientoResultText"></div>
+      </div>
+      <button class="btn-knife" id="btnKnifeAttack">🔪 ¡CORTAR!</button>
+      <button class="btn-small hidden" id="btnEnfrentamientoRetry">💻 Inténtalo otra vez</button>
+      <button class="btn-small hidden" id="btnEnfrentamientoOtra">🔁 Jugar otra vez</button>
+    </div>
+  </section>
+
+  <!-- ===================== PANTALLA: CARRERA META ===================== -->
+  <section id="screen-carrerameta" class="screen screen-3d">
+    <h2 class="screen-title">🏁 Carrera Meta</h2>
+    <p class="screen-info" id="carrerametaInfo">¡Corre hasta la meta! Salta obstáculos y agarra cajitas 📦</p>
+    <div class="runner-hud">
+      <span>📦 <b id="carrerametaBoxes">0/5</b></span>
+      <span>🏁 <b id="carrerametaDist">0</b>m</span>
+    </div>
+    <div class="spacer"></div>
+    <div class="dock">
+      <div class="reveal-box hidden" id="carrerametaOver">
+        <div class="reveal-name" id="carrerametaResult"></div>
+      </div>
+      <div class="race-controls">
+        <button class="dpad jump-btn" id="btnRunnerJump">⬆️ SALTAR</button>
+      </div>
+      <p class="hint">Espacio / flecha arriba para saltar. ¡Corre automático!</p>
+      <button class="btn-small hidden" id="btnCarrerametaRetry">🔁 Volver a intentar</button>
+    </div>
+  </section>
+
+  <!-- ===================== PANTALLA: PINTAR IGUAL ===================== -->
+  <section id="screen-pintar" class="screen screen-3d">
+    <h2 class="screen-title">🎨 Pintar Igual <span class="badge-hard">Difícil</span></h2>
+    <p class="screen-info" id="pintarInfo">Copia la figura del monstruo en tu lienzo</p>
+    <div class="paint-area">
+      <div class="paint-panel">
+        <div class="paint-label">👹 Así lo pintó el monstruo:</div>
+        <canvas id="paintRef" class="paint-canvas" width="160" height="160"></canvas>
+      </div>
+      <div class="paint-panel">
+        <div class="paint-label">✏️ Tú pinta igual:</div>
+        <canvas id="paintDraw" class="paint-canvas paint-draw" width="160" height="160"></canvas>
+      </div>
+    </div>
+    <div class="paint-tools">
+      <button class="paint-color selected" data-color="#e0241b" style="background:#e0241b"></button>
+      <button class="paint-color" data-color="#b388ff" style="background:#b388ff"></button>
+      <button class="paint-color" data-color="#ff79c6" style="background:#ff79c6"></button>
+      <button class="paint-color" data-color="#4db8ff" style="background:#4db8ff"></button>
+      <button class="paint-color" data-color="#ffd54f" style="background:#ffd54f"></button>
+      <button class="paint-color" data-color="#2ecc71" style="background:#2ecc71"></button>
+      <button class="btn-small paint-clear" id="btnPaintClear">🧽 Borrar</button>
+    </div>
+    <div class="spacer"></div>
+    <div class="dock">
+      <div class="reveal-box hidden" id="pintarResult">
+        <div class="reveal-name" id="pintarResultText"></div>
+      </div>
+      <button class="btn-small" id="btnPaintCheck">✅ Comparar</button>
+      <button class="btn-small hidden" id="btnPintarOtra">🔁 Pintar otra vez</button>
+    </div>
   </section>
 
   <!-- ===================== PANTALLA: PUERTAS ===================== -->
@@ -157,6 +253,7 @@
   <!-- Cara aterradora en pantalla (overlay para sustos) -->
   <div id="scareOverlay" class="scare-overlay hidden">
     <div class="scare-face">
+      <div class="scare-silly hidden" id="scareSilly">🤡</div>
       <div class="scare-eyes">
         <div class="scare-eye"><div class="scare-pupil"></div></div>
         <div class="scare-eye"><div class="scare-pupil"></div></div>
@@ -168,6 +265,9 @@
     </div>
     <div class="scare-text" id="scareText">AH AH AH</div>
   </div>
+
+  <!-- Banner MACARENA (escondite gracioso / preguntas) -->
+  <div id="macarenaBanner" class="macarena-banner hidden">¡MACARENA! 💃🕺</div>
 
   <script src="vendor/three.min.js"></script>
   <script src="models.js"></script>

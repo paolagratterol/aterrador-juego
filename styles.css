@@ -2,6 +2,7 @@
    ATERRADOR 3D - Estilos
    Lienzo 3D de fondo + interfaz (overlays) encima.
    Dos temas: TERRORÍFICO (morado/negro) y GRACIOSO (rosa/azul).
+   + Modo Medio (mezcla morado/rosa).
    ============================================================ */
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -22,9 +23,11 @@ body {
 .theme-none     { --accent: #b388ff; --accent2: #ff79c6; --card: #2d1b4e; --card-border: #7c4dff; --text: #ffffff; --bg1:#2b1055; --bg2:#120024; }
 .theme-terror   { --accent: #a64dff; --accent2: #ff2e63; --card: #2a0a45; --card-border: #9b30ff; --text: #f3e8ff; --bg1:#3a006e; --bg2:#050008; }
 .theme-gracioso { --accent: #ff7ac3; --accent2: #4db8ff; --card: #fff3fb; --card-border: #ff9ed6; --text: #5a2a66; --bg1:#7ec8ff; --bg2:#ffd6f0; }
+.theme-medio    { --accent: #b388ff; --accent2: #ff79c6; --card: #3a1f5c; --card-border: #e040fb; --text: #fce4ff; --bg1:#5a2a8a; --bg2:#1a0a30; }
 
 body.theme-terror   { background: radial-gradient(circle at 50% 0%, var(--bg1), var(--bg2)); color: var(--text); }
 body.theme-gracioso { background: linear-gradient(180deg, var(--bg1) 0%, #bfe3ff 40%, var(--bg2) 100%); color: var(--text); }
+body.theme-medio    { background: linear-gradient(160deg, var(--bg1) 0%, #3d2066 45%, var(--bg2) 100%); color: var(--text); }
 body.theme-none     { background: radial-gradient(circle at 50% 10%, var(--bg1), var(--bg2)); color: var(--text); }
 
 /* ---------- Lienzo 3D ---------- */
@@ -51,13 +54,18 @@ body.theme-none     { background: radial-gradient(circle at 50% 10%, var(--bg1),
 .screen-3d .screen-info,
 .screen-3d .hint,
 .screen-3d .race-hud,
+.screen-3d .confront-hud,
+.screen-3d .runner-hud,
+.screen-3d .paint-area,
+.screen-3d .paint-tools,
 .screen-3d button,
 .screen-3d .reveal-box,
 .screen-3d .escondite-status,
 .screen-3d .quiz-bubble,
 .screen-3d .quiz-options,
 .screen-3d .quiz-score,
-.screen-3d .skins-grid { pointer-events: auto; }
+.screen-3d .skins-grid,
+.screen-3d .intro-overlay { pointer-events: auto; }
 
 /* Contenedor de controles anclado abajo */
 .dock {
@@ -74,6 +82,7 @@ body.theme-none     { background: radial-gradient(circle at 50% 10%, var(--bg1),
   background: rgba(0,0,0,0.35); backdrop-filter: blur(4px); z-index: 50;
 }
 body.theme-gracioso .topbar { background: rgba(255,255,255,0.5); }
+body.theme-medio .topbar { background: rgba(60,20,90,0.55); }
 .coins-box, .skin-box {
   background: var(--card); border: 2px solid var(--card-border);
   border-radius: 20px; padding: 4px 12px; font-weight: bold; font-size: 15px; color: var(--text);
@@ -89,12 +98,44 @@ body.theme-gracioso .topbar { background: rgba(255,255,255,0.5); }
 }
 @keyframes titleWobble { 0%,100%{transform:rotate(-1.5deg) scale(1);} 50%{transform:rotate(1.5deg) scale(1.03);} }
 .subtitle { font-size: 20px; margin: 4px 0 6px; text-shadow: 0 2px 8px rgba(0,0,0,0.5); }
+
+/* ---------- Intro de entrada (minions + desfile) ---------- */
+.intro-overlay {
+  position: relative; z-index: 4; pointer-events: auto; cursor: pointer;
+  margin: 8px 0 4px; padding: 0 12px; max-width: 92vw;
+}
+.intro-phase-label {
+  font-size: clamp(22px, 6vw, 36px); font-weight: bold; margin: 0 0 6px;
+  background: linear-gradient(135deg, rgba(255,235,59,0.95), rgba(255,121,198,0.95));
+  color: #3a1040; border: 3px solid #fff; border-radius: 20px;
+  padding: 8px 20px; display: inline-block;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+  animation: introLabelPop 0.45s ease;
+}
+@keyframes introLabelPop {
+  0% { transform: scale(0.7) rotate(-4deg); opacity: 0; }
+  70% { transform: scale(1.08) rotate(2deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0deg); }
+}
+.intro-skip-hint {
+  font-size: 14px; margin: 4px 0 0; opacity: 0.88;
+  background: rgba(0,0,0,0.28); padding: 4px 12px; border-radius: 12px; display: inline-block;
+}
+.intro-coin-hint {
+  font-size: 13px; margin: 6px 0 0; font-weight: bold;
+  background: rgba(0,0,0,0.35); padding: 4px 12px; border-radius: 12px; display: inline-block;
+}
+body.theme-gracioso .intro-skip-hint,
+body.theme-gracioso .intro-coin-hint { background: rgba(255,255,255,0.55); color: #5a2a66; }
 .screen-title {
   font-size: clamp(24px, 6.5vw, 42px); margin: 2px 0 6px;
   text-shadow: 0 2px 10px rgba(0,0,0,0.45); background: rgba(0,0,0,0.18);
   padding: 2px 14px; border-radius: 16px;
 }
 body.theme-gracioso .screen-title { background: rgba(255,255,255,0.4); }
+body.theme-medio .screen-title { background: rgba(80,30,120,0.45); }
+body.theme-medio .screen-info { background: rgba(60,20,90,0.4); }
+body.theme-medio .hint { background: rgba(60,20,90,0.35); }
 .screen-info {
   font-size: 15px; max-width: 600px; margin: 0 auto 8px;
   background: rgba(0,0,0,0.25); padding: 6px 12px; border-radius: 14px;
@@ -141,6 +182,7 @@ body.theme-gracioso .hint { background: rgba(255,255,255,0.5); }
 .tema-card:hover { transform: translateY(-6px) scale(1.02); }
 .tema-terror { background: radial-gradient(circle at 50% 30%, #6a00b0, #11001f); box-shadow: 0 0 30px #9b30ff; }
 .tema-gracioso { background: linear-gradient(160deg, #7ec8ff, #ff9ed6); box-shadow: 0 0 30px #ff9ed6; color: #5a2a66; }
+.tema-medio { background: linear-gradient(145deg, #6a1b9a, #ff4081 55%, #4527a0); box-shadow: 0 0 32px #e040fb, 0 0 12px #ff79c6; }
 .tema-emoji { font-size: 70px; }
 .tema-name { font-size: 28px; font-weight: bold; margin: 8px 0; letter-spacing: 1px; }
 .tema-desc { font-size: 15px; }
@@ -156,6 +198,73 @@ body.theme-gracioso .hint { background: rgba(255,255,255,0.5); }
 .menu-card:active { transform: scale(0.94); }
 .menu-card:hover { transform: translateY(-4px); }
 .menu-ico { font-size: 44px; }
+.menu-grid-medio { grid-template-columns: repeat(1, minmax(200px, 280px)); }
+.menu-card-hard { border-color: #ff4081; box-shadow: 0 0 12px rgba(255,64,129,0.4); }
+.menu-card small { font-size: 13px; opacity: 0.85; font-weight: normal; }
+.badge-hard { font-size: 14px; background: #ff4081; color: #fff; padding: 2px 10px; border-radius: 12px; vertical-align: middle; }
+
+/* ---------- Enfrentamiento HUD ---------- */
+.confront-hud {
+  display: flex; gap: 18px; align-items: center; font-size: 18px;
+  background: var(--card); border: 2px solid var(--card-border);
+  border-radius: 18px; padding: 8px 18px; margin: 4px 0 8px; color: var(--text);
+}
+.range-hint { color: #ff4081; font-weight: bold; animation: rangePulse 0.4s ease-in-out infinite alternate; }
+@keyframes rangePulse { from { transform: scale(1); } to { transform: scale(1.12); } }
+.btn-knife {
+  font-family: inherit; font-size: 26px; font-weight: bold; color: #fff; border: none;
+  border-radius: 50%; width: 90px; height: 90px; cursor: pointer;
+  background: radial-gradient(circle at 40% 35%, #ff6b6b, #b3001b);
+  box-shadow: 0 6px 0 #6a0010, 0 10px 24px rgba(255,0,60,0.5);
+  transition: transform 0.08s;
+}
+.btn-knife:active { transform: translateY(4px) scale(0.95); box-shadow: 0 2px 0 #6a0010; }
+.btn-knife.swing { animation: knifeSwing 0.35s ease; }
+@keyframes knifeSwing {
+  0% { transform: rotate(0deg) scale(1); }
+  40% { transform: rotate(-25deg) scale(1.15); }
+  100% { transform: rotate(0deg) scale(1); }
+}
+
+/* ---------- Carrera Meta HUD ---------- */
+.runner-hud {
+  display: flex; gap: 22px; font-size: 18px; background: var(--card);
+  border: 2px solid var(--card-border); border-radius: 18px; padding: 8px 18px;
+  margin: 4px 0 8px; color: var(--text);
+}
+.jump-btn { width: auto; min-width: 120px; padding: 0 18px; font-size: 20px; border-radius: 20px; height: 58px; }
+
+/* ---------- Pintar Igual ---------- */
+.paint-area {
+  display: flex; flex-wrap: wrap; gap: 16px; justify-content: center; margin: 8px 0;
+}
+.paint-panel {
+  background: var(--card); border: 3px solid var(--card-border);
+  border-radius: 18px; padding: 10px 14px; color: var(--text);
+}
+.paint-label { font-size: 14px; font-weight: bold; margin-bottom: 6px; }
+.paint-canvas {
+  display: block; background: #fff; border-radius: 12px;
+  border: 2px solid #ccc; touch-action: none; cursor: crosshair;
+}
+.paint-draw { border-color: var(--accent); }
+.paint-tools {
+  display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: center;
+  margin: 6px 0;
+}
+.paint-color {
+  width: 36px; height: 36px; border-radius: 50%; border: 3px solid #fff;
+  cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+}
+.paint-color.selected { border-color: #ffd54f; transform: scale(1.15); box-shadow: 0 0 10px #ffd54f; }
+.paint-clear { font-size: 15px; padding: 8px 14px; }
+
+/* ---------- Floaters modo medio ---------- */
+.medio-spark { position: absolute; font-size: 28px; animation: medioFloat linear infinite; }
+@keyframes medioFloat {
+  0% { transform: translateY(110vh) rotate(0deg); opacity: 0.85; }
+  100% { transform: translateY(-20vh) rotate(360deg); opacity: 0.5; }
+}
 
 /* ---------- Banners (reveal / fin de carrera) ---------- */
 .reveal-box {
@@ -309,3 +418,62 @@ body.theme-gracioso .quiz-score { background: rgba(255,255,255,0.6); color:#5a2a
   text-shadow: 0 0 18px #ff0000, 0 0 4px #fff; animation: scareTextJump 0.3s ease-in-out infinite alternate;
 }
 @keyframes scareTextJump { from { transform: scale(1) rotate(-3deg); } to { transform: scale(1.12) rotate(3deg); } }
+
+/* Susto suave en modo gracioso (un poquito aterrador) */
+.scare-overlay.scare-mild {
+  background: radial-gradient(circle at 50% 45%, #ffb3e0 0%, #7ec8ff 55%, #ffd6f0 100%);
+}
+.scare-overlay.scare-mild .scare-face {
+  width: min(55vw, 240px); height: min(55vw, 240px);
+  background: radial-gradient(circle at 50% 40%, #ff6b9d 0%, #ff4081 55%, #e91e63 100%);
+  box-shadow: 0 0 40px 12px rgba(255,105,180,0.6);
+  animation: scarePulse 0.35s ease-in-out infinite;
+}
+.scare-overlay.scare-mild .scare-text {
+  color: #fff; text-shadow: 0 0 12px #ff4081, 2px 2px 0 #7c4dff;
+  font-size: clamp(28px, 10vw, 64px);
+}
+.scare-overlay.scare-mild.scare-anim { animation: scareWiggle 0.18s linear 0s 8, scareIn 0.2s ease; }
+@keyframes scareWiggle {
+  0%,100% { transform: rotate(0deg); }
+  25% { transform: rotate(-2deg) scale(1.02); }
+  75% { transform: rotate(2deg) scale(1.02); }
+}
+
+/* Toque gracioso en modo terrorífico (un poquito gracioso) */
+.scare-overlay.scare-terror-funny .scare-silly:not(.hidden) {
+  display: block; position: absolute; top: -18%; right: -8%;
+  font-size: clamp(40px, 14vw, 72px);
+  animation: sillyBounce 0.45s ease-in-out infinite alternate;
+}
+.scare-overlay.scare-mild .scare-silly:not(.hidden) {
+  display: block; position: absolute; bottom: -12%; left: 50%; transform: translateX(-50%);
+  font-size: clamp(36px, 12vw, 56px);
+  animation: sillyBounce 0.4s ease-in-out infinite alternate;
+}
+.scare-overlay.scare-terror-funny .scare-text {
+  font-size: clamp(28px, 10vw, 72px);
+}
+@keyframes sillyBounce { from { transform: rotate(-12deg) scale(1); } to { transform: rotate(12deg) scale(1.15); } }
+.scare-silly { display: none; }
+
+/* ---------- Banner MACARENA ---------- */
+.macarena-banner {
+  position: fixed; top: 18%; left: 50%; transform: translateX(-50%);
+  z-index: 180; pointer-events: none;
+  font-size: clamp(32px, 11vw, 72px); font-weight: bold; letter-spacing: 2px;
+  color: #fff; text-shadow: 0 0 16px #ff4081, 0 4px 0 #7c4dff, 3px 3px 0 #000;
+  background: linear-gradient(135deg, rgba(255,64,129,0.92), rgba(77,184,255,0.92));
+  border: 4px solid #fff; border-radius: 24px; padding: 10px 22px;
+  box-shadow: 0 8px 28px rgba(0,0,0,0.45);
+}
+.macarena-banner.macarena-anim { animation: macarenaPop 0.5s ease, macarenaBounce 0.6s ease-in-out 0.5s infinite; }
+@keyframes macarenaPop {
+  0% { transform: translateX(-50%) scale(0) rotate(-20deg); opacity: 0; }
+  70% { transform: translateX(-50%) scale(1.15) rotate(5deg); opacity: 1; }
+  100% { transform: translateX(-50%) scale(1) rotate(0deg); }
+}
+@keyframes macarenaBounce {
+  0%,100% { transform: translateX(-50%) translateY(0) rotate(-2deg); }
+  50% { transform: translateX(-50%) translateY(-10px) rotate(2deg); }
+}

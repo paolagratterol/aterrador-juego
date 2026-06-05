@@ -130,34 +130,208 @@
   }
 
   /* ============================================================
-     INTRO: muñeca girando
+     INTRO: fase 1 minions saltando → fase 2 desfile de skins → idle
      ============================================================ */
+  var INTRO_MINIONS_DUR = 2.5;
+  var INTRO_PARADE_MAX = 8.0;
+  var INTRO_CHAR_INTERVAL = 0.62;
+
   function buildIntro(opts) {
+    opts = opts || {};
     var scene = newScene();
     groundPlane(scene, theme === "gracioso" ? "#ffd6f0" : (theme === "terror" ? "#1a0a25" : "#2b1055"));
-    var doll = M.buildDoll(opts.skinId || "muneca");
-    scene.add(doll);
     var balloons = theme === "gracioso" ? addFloatingBalloons(scene, 8) : [];
     var camera = new T.PerspectiveCamera(50, 1, 0.1, 100);
 
+    var minionRoot = new T.Group();
+    scene.add(minionRoot);
+    var minions = [];
+    var MINION_COUNT = 6;
+    for (var mi = 0; mi < MINION_COUNT; mi++) {
+      var mn = M.buildMinion(mi % 3);
+      mn.position.set(-5.5 + mi * 2.0, 0, -0.4 + (mi % 2) * 0.35);
+      mn.scale.setScalar(0.72 + (mi % 3) * 0.06);
+      mn.userData.baseX = mn.position.x;
+      mn.userData.hopSpeed = 5.5 + mi * 0.35;
+      minionRoot.add(mn);
+      minions.push(mn);
+    }
+
+    var paradeRoot = new T.Group();
+    paradeRoot.visible = false;
+    scene.add(paradeRoot);
+    var paradeChars = [];
+    var skinList = opts.skins || [
+      { id: "muneca", price: 0 }, { id: "sirena", price: 0 }, { id: "lol", price: 0 },
+      { id: "taza", price: 0 }, { id: "mono", price: 0 }, { id: "dino", price: 0 },
+      { id: "lolmejorada", price: 6000 }, { id: "arcoiris", price: 10000 }
+    ];
+
+    var idleHolder = new T.Group();
+    idleHolder.visible = false;
+    scene.add(idleHolder);
+    var idleDoll = M.buildDoll(opts.skinId || "muneca");
+    idleHolder.add(idleDoll);
+
+    var phase = "minions";
+    var phaseT = 0;
+    var paradeIdx = 0;
+    var paradeSpawnT = 0;
+    var paradeDone = false;
+    var introDone = false;
+    var lastPhaseLabel = "";
+
+    function setPhaseLabel(txt) {
+      if (txt !== lastPhaseLabel) {
+        lastPhaseLabel = txt;
+        if (opts.onPhaseChange) opts.onPhaseChange(phase, txt);
+      }
+    }
+
+    function spawnParadeChar(idx) {
+      if (idx >= skinList.length) return;
+      var info = skinList[idx];
+      var holder = new T.Group();
+      var doll = M.buildDoll(info.id);
+      doll.scale.setScalar(0.62);
+      holder.add(doll);
+      if (info.price > 0) {
+        M.darkenGroup(doll, 0.62);
+        holder.add(M.buildCoinSprite());
+      }
+      holder.position.set(-7.5, 0, 0.2);
+      holder.userData.doll = doll;
+      holder.userData.paid = info.price > 0;
+      holder.userData.name = info.name || info.id;
+      paradeRoot.add(holder);
+      paradeChars.push(holder);
+    }
+
+    function clearParade() {
+      paradeChars.forEach(function (h) {
+        paradeRoot.remove(h);
+        disposeObject(h);
+      });
+      paradeChars = [];
+    }
+
+    function finishIntro() {
+      if (introDone) return;
+      introDone = true;
+      minionRoot.visible = false;
+      paradeRoot.visible = false;
+      clearParade();
+      idleHolder.visible = true;
+      setPhaseLabel("");
+      if (opts.onIntroComplete) opts.onIntroComplete();
+    }
+
+    function goParade() {
+      phase = "parade";
+      phaseT = 0;
+      paradeIdx = 0;
+      paradeSpawnT = 0;
+      paradeDone = false;
+      minionRoot.visible = false;
+      paradeRoot.visible = true;
+      setPhaseLabel("¡Personajes!");
+      spawnParadeChar(0);
+      paradeIdx = 1;
+    }
+
+    function goIdle() {
+      phase = "idle";
+      phaseT = 0;
+      paradeRoot.visible = false;
+      clearParade();
+      idleHolder.visible = true;
+      setPhaseLabel("");
+    }
+
+    setPhaseLabel("¡Minions!");
+
     var c = {
-      scene: scene, camera: camera, doll: doll, balloons: balloons, t: 0,
+      scene: scene, camera: camera, t: 0, balloons: balloons,
+      skip: function () { finishIntro(); goIdle(); },
       onResize: function (w, h) {
         camera.aspect = w / h;
-        camera.position.set(0, 1.25, w / h < 0.8 ? 5.2 : 4.2);
-        camera.lookAt(0, 1.05, 0);
+        var z = w / h < 0.8 ? 5.6 : 4.6;
+        if (phase === "minions") {
+          camera.position.set(0, 1.05, z);
+          camera.lookAt(0, 0.55, 0);
+        } else if (phase === "parade") {
+          camera.position.set(0, 1.35, z + 0.4);
+          camera.lookAt(0, 1.0, 0);
+        } else {
+          camera.position.set(0, 1.25, w / h < 0.8 ? 5.2 : 4.2);
+          camera.lookAt(0, 1.05, 0);
+        }
         camera.updateProjectionMatrix();
+      },
+      onPointerDown: function () {
+        if (!introDone) c.skip();
       },
       update: function (dt) {
         c.t += dt;
-        doll.rotation.y += dt * 0.7;
-        doll.position.y = Math.sin(c.t * 1.6) * 0.06;
-        if (doll.userData.tick) doll.userData.tick(dt, c.t);
         balloons.forEach(function (b) {
           b.position.y = b.userData.baseY + Math.sin(c.t + b.userData.phase) * 0.4;
         });
+
+        if (phase === "minions") {
+          phaseT += dt;
+          minions.forEach(function (mn, i) {
+            var hop = Math.abs(Math.sin(c.t * mn.userData.hopSpeed + mn.userData.bouncePhase));
+            mn.position.y = hop * 0.55;
+            mn.position.x = mn.userData.baseX + Math.sin(c.t * 1.4 + i * 0.5) * 0.35;
+            mn.rotation.z = Math.sin(c.t * mn.userData.hopSpeed * 0.5) * 0.12;
+            mn.rotation.y = Math.sin(c.t * 0.8 + i) * 0.25;
+          });
+          if (phaseT >= INTRO_MINIONS_DUR) goParade();
+        } else if (phase === "parade") {
+          phaseT += dt;
+          paradeSpawnT += dt;
+          if (paradeIdx < skinList.length && paradeSpawnT >= INTRO_CHAR_INTERVAL) {
+            paradeSpawnT = 0;
+            spawnParadeChar(paradeIdx);
+            paradeIdx++;
+          }
+          var march = 2.8 * dt;
+          paradeChars.forEach(function (h, i) {
+            h.position.x += march;
+            h.rotation.y = Math.sin(c.t * 2 + i) * 0.15;
+            var d = h.userData.doll;
+            if (d) {
+              d.position.y = Math.abs(Math.sin(c.t * 6 + i * 0.7)) * 0.05;
+              if (d.userData.tick) d.userData.tick(dt, c.t + i);
+            }
+            h.children.forEach(function (ch) {
+              if (ch.userData && ch.userData.isCoin) {
+                ch.position.y = 2.35 + Math.sin(c.t * 5 + i) * 0.08;
+              }
+            });
+          });
+          while (paradeChars.length && paradeChars[0].position.x > 8.5) {
+            paradeRoot.remove(paradeChars[0]);
+            disposeObject(paradeChars[0]);
+            paradeChars.shift();
+          }
+          if (!paradeDone && paradeIdx >= skinList.length && paradeChars.length === 0) {
+            paradeDone = true;
+            finishIntro();
+            goIdle();
+          } else if (!paradeDone && phaseT >= INTRO_PARADE_MAX) {
+            paradeDone = true;
+            finishIntro();
+            goIdle();
+          }
+        } else {
+          idleDoll.rotation.y += dt * 0.7;
+          idleDoll.position.y = Math.sin(c.t * 1.6) * 0.06;
+          if (idleDoll.userData.tick) idleDoll.userData.tick(dt, c.t);
+        }
       }
     };
+    c.onResize(window.innerWidth, window.innerHeight);
     return c;
   }
 
@@ -494,13 +668,28 @@
     var keys = {};
     var target = null;
     var groundV = new T.Vector3();
+    var plush = null;
+    var camNormal = { pos: new T.Vector3(), look: new T.Vector3(0, 0, -0.5) };
+    var camDance = { pos: new T.Vector3(0, 3.4, 7.5), look: new T.Vector3(0, 1.2, 4.4) };
+    var stagePlayer = new T.Vector3(-1.2, 0.18, 4.6);
+    var stageSeeker = new T.Vector3(1.2, 0.18, 4.6);
+    var danceFrom = { p: new T.Vector3(), s: new T.Vector3() };
+    var DANCE_MOVE_DUR = 0.85;
+    var DANCE_TOTAL_DUR = 6.5;
+    var danceCompleteFired = false;
 
     var c = {
       scene: scene, camera: camera, ended: false, hidden: false, idle: 0, t: 0, seekTimer: 0, dance: 0,
       onResize: function (w, h) {
         camera.aspect = w / h;
-        camera.position.set(0, w / h < 0.8 ? 11 : 9, w / h < 0.8 ? 11 : 9.5);
+        var cy = w / h < 0.8 ? 11 : 9;
+        var cz = w / h < 0.8 ? 11 : 9.5;
+        camera.position.set(0, cy, cz);
         camera.lookAt(0, 0, -0.5);
+        camNormal.pos.set(0, cy, cz);
+        camNormal.look.set(0, 0, -0.5);
+        camDance.pos.set(0, w / h < 0.8 ? 3.8 : 3.4, w / h < 0.8 ? 8.2 : 7.5);
+        camDance.look.set(0, 1.2, 4.4);
         camera.updateProjectionMatrix();
       },
       setMove: function (dir, val) { keys[dir] = val; target = null; if (val) c.idle = 0; },
@@ -522,8 +711,19 @@
       },
       update: function (dt) {
         c.t += dt;
-        if (player.userData.tick) player.userData.tick(dt, c.t);
-        M.updateMonsterScare(seeker, dt, c.t);
+        if (player.userData.tick && !(c.dance > 0 && theme === "gracioso")) player.userData.tick(dt, c.t);
+        if (c.dance > 0) {
+          c.dance += dt;
+          if (theme === "gracioso") {
+            updateGraciosoDance(dt);
+          } else {
+            if (seeker.userData.macarena <= 0) M.startMacarena(seeker);
+            seeker.userData.macarena = c.dance;
+            M.updateMacarena(seeker, c.dance);
+          }
+        } else {
+          M.updateMonsterScare(seeker, dt, c.t);
+        }
         if (food) {
           food.rotation.y += dt * 2;
           food.position.y = 0.05 + Math.abs(Math.sin(c.t * 4)) * 0.05;
@@ -539,34 +739,36 @@
             if (s.light) s.light.intensity = 0.6 + k;
           }
         });
-        if (c.ended) return;
+        if (c.ended && c.dance <= 0) return;
 
-        // mover jugador
-        var sp = 5.0, vx = 0, vz = 0;
-        if (keys.up) vz -= 1;
-        if (keys.down) vz += 1;
-        if (keys.left) vx -= 1;
-        if (keys.right) vx += 1;
-        if (target) {
-          var tdx = target.x - player.position.x, tdz = target.z - player.position.z;
-          var dd = Math.sqrt(tdx * tdx + tdz * tdz);
-          if (dd > 0.15) { vx += tdx / dd; vz += tdz / dd; c.idle = 0; }
-          else target = null;
+        // mover jugador (no durante la macarena graciosa)
+        if (!(c.dance > 0 && theme === "gracioso")) {
+          var sp = 5.0, vx = 0, vz = 0;
+          if (keys.up) vz -= 1;
+          if (keys.down) vz += 1;
+          if (keys.left) vx -= 1;
+          if (keys.right) vx += 1;
+          if (target) {
+            var tdx = target.x - player.position.x, tdz = target.z - player.position.z;
+            var dd = Math.sqrt(tdx * tdx + tdz * tdz);
+            if (dd > 0.15) { vx += tdx / dd; vz += tdz / dd; c.idle = 0; }
+            else target = null;
+          }
+          var vlen = Math.sqrt(vx * vx + vz * vz);
+          if (vlen > 0.01 && !c.hidden) {
+            vx /= vlen; vz /= vlen;
+            player.position.x = Math.max(minX, Math.min(maxX, player.position.x + vx * sp * dt));
+            player.position.z = Math.max(minZ, Math.min(maxZ, player.position.z + vz * sp * dt));
+            player.rotation.y = Math.atan2(vx, vz);
+            c.idle = 0;
+          } else {
+            c.idle += dt;
+          }
+          player.position.y = Math.abs(Math.sin(c.t * 6)) * 0.05 * (vlen > 0.01 ? 1 : 0);
         }
-        var vlen = Math.sqrt(vx * vx + vz * vz);
-        if (vlen > 0.01 && !c.hidden) {
-          vx /= vlen; vz /= vlen;
-          player.position.x = Math.max(minX, Math.min(maxX, player.position.x + vx * sp * dt));
-          player.position.z = Math.max(minZ, Math.min(maxZ, player.position.z + vz * sp * dt));
-          player.rotation.y = Math.atan2(vx, vz);
-          c.idle = 0;
-        } else {
-          c.idle += dt;
-        }
-        player.position.y = Math.abs(Math.sin(c.t * 6)) * 0.05 * (vlen > 0.01 ? 1 : 0);
 
         // esconderse
-        if (!c.hidden) {
+        if (!c.hidden && !(c.dance > 0)) {
           spots.forEach(function (s) {
             if (s.lit && !s.used) {
               var dx = s.x - player.position.x, dz = s.z - player.position.z;
@@ -585,9 +787,7 @@
 
         // buscador
         if (c.dance > 0) {
-          c.dance += dt;
-          seeker.rotation.z = Math.sin(c.t * 12) * 0.4;
-          seeker.position.y = Math.abs(Math.sin(c.t * 10)) * 0.3;
+          // macarena ya actualizada arriba
         } else {
           var st = seeker.userData.target;
           var sdx = st.x - seeker.position.x, sdz = st.z - seeker.position.z;
@@ -609,21 +809,83 @@
         }
 
         // quieto demasiado tiempo
-        if (!c.hidden && c.idle > 8) {
+        if (!c.hidden && !c.dance && c.idle > 8) {
           c.ended = true;
           if (opts.onIdleOut) opts.onIdleOut();
         }
+      },
+      dispose: function () {
+        if (plush) { scene.remove(plush); disposeObject(plush); plush = null; }
       }
     };
 
+    function smoothstep(t) { return t * t * (3 - 2 * t); }
+
+    function updateGraciosoDance(dt) {
+      var moveT = Math.min(1, c.dance / DANCE_MOVE_DUR);
+      var ease = smoothstep(moveT);
+      player.position.lerpVectors(danceFrom.p, stagePlayer, ease);
+      seeker.position.lerpVectors(danceFrom.s, stageSeeker, ease);
+      var bounce = Math.abs(Math.sin(c.dance * 8)) * 0.1;
+      player.position.y = 0.18 + bounce;
+      seeker.position.y = 0.18 + bounce;
+      player.rotation.y = Math.PI;
+      seeker.rotation.y = Math.PI;
+
+      if (seeker.userData.macarena <= 0) M.startMacarena(seeker);
+      if (player.userData.macarena <= 0) M.startMacarena(player);
+      seeker.userData.macarena = c.dance;
+      player.userData.macarena = c.dance;
+      M.updateMacarena(seeker, c.dance);
+      M.updateMacarena(player, c.dance);
+
+      if (plush) {
+        plush.position.set(
+          (player.position.x + seeker.position.x) * 0.5,
+          1.05 + Math.abs(Math.sin(c.dance * 8)) * 0.14,
+          (player.position.z + seeker.position.z) * 0.5 - 0.2
+        );
+        plush.rotation.y = Math.sin(c.dance * 3) * 0.35;
+        if (plush.userData.tick) plush.userData.tick(dt, c.dance);
+      }
+
+      var camK = Math.min(1, c.dance / 0.75);
+      var cp = new T.Vector3().lerpVectors(camNormal.pos, camDance.pos, smoothstep(camK));
+      var cl = new T.Vector3().lerpVectors(camNormal.look, camDance.look, smoothstep(camK));
+      camera.position.copy(cp);
+      camera.lookAt(cl);
+
+      if (c.dance >= DANCE_TOTAL_DUR && !danceCompleteFired) {
+        danceCompleteFired = true;
+        if (opts.onDanceComplete) opts.onDanceComplete();
+      }
+    }
+
     function found() {
       c.ended = true;
-      // el monstruo pone cara fea, abre la boca y se acerca corriendo
+      if (theme === "gracioso") {
+        c.hidden = false;
+        player.scale.set(0.78, 0.78, 0.78);
+        seeker.scale.setScalar(1.15);
+        danceFrom.p.copy(player.position);
+        danceFrom.s.copy(seeker.position);
+        danceCompleteFired = false;
+        c.dance = 0.001;
+        M.startMacarena(seeker);
+        M.startMacarena(player);
+        if (!plush) {
+          plush = M.buildMiniLolPlush(opts.skinId || "muneca");
+          plush.position.copy(danceFrom.p);
+          plush.position.y = 0.9;
+          scene.add(plush);
+        }
+        if (opts.onFound) opts.onFound(theme);
+        return;
+      }
       if (seeker.userData.scare) seeker.userData.scare();
       seeker.position.set(player.position.x, 0, player.position.z + 1.4);
       seeker.lookAt(player.position.x, 0.5, player.position.z);
       seeker.scale.setScalar(1.3);
-      if (theme === "gracioso") { c.dance = 0.001; }
       if (opts.onFound) opts.onFound(theme);
     }
 
@@ -799,31 +1061,315 @@
         camera.lookAt(0, 0.9, 0);
         camera.updateProjectionMatrix();
       },
-      setMood: function (m) { c.mood = m; if (m === "dance") c.dance = 0.001; },
+      setMood: function (m) {
+        c.mood = m;
+        if (m === "dance") {
+          c.dance = 0.001;
+          M.startMacarena(mon);
+        } else {
+          c.dance = 0;
+          M.stopMacarena(mon);
+        }
+      },
       update: function (dt) {
         c.t += dt;
-        M.updateMonsterScare(mon, dt, c.t);
         if (c.dance > 0) {
           c.dance += dt;
-          mon.rotation.z = Math.sin(c.t * 12) * 0.3;
-          mon.position.y = Math.abs(Math.sin(c.t * 10)) * 0.25;
-          mon.rotation.y += dt * 1.5;
-        } else if (c.mood === "angry") {
-          mon.position.x = Math.sin(c.t * 18) * 0.04;
-          mon.position.y = 0;
+          mon.userData.macarena = c.dance;
+          M.updateMacarena(mon, c.dance);
         } else {
-          mon.rotation.y += dt * 0.4;
-          mon.position.y = Math.sin(c.t * 2) * 0.05;
+          M.updateMonsterScare(mon, dt, c.t);
+          if (c.mood === "angry") {
+            mon.position.x = Math.sin(c.t * 18) * 0.04;
+            mon.position.y = 0;
+          } else {
+            mon.rotation.y += dt * 0.4;
+            mon.position.y = Math.sin(c.t * 2) * 0.05;
+          }
         }
       }
     };
     return c;
   }
 
+  /* ============================================================
+     ENFRENTAMIENTO: monstruo morado camina, cortar cabeza con cuchillo
+     ============================================================ */
+  function buildEnfrentamiento(opts) {
+    var scene = newScene();
+    groundPlane(scene, "#2a1545", 30);
+    addFloatingBalloons(scene, 4);
+
+    var player = M.buildDoll(opts.skinId || "muneca");
+    player.scale.set(0.6, 0.6, 0.6);
+    player.position.set(-2.2, 0, 0);
+    player.rotation.y = Math.PI / 2;
+    scene.add(player);
+
+    var knife = M.buildKnife();
+    knife.position.set(-1.5, 0.85, 0.35);
+    knife.rotation.z = -0.3;
+    scene.add(knife);
+
+    var monster = M.buildPurpleMonster();
+    monster.scale.set(1.1, 1.1, 1.1);
+    monster.position.set(-11, 0, 0.5);
+    monster.rotation.y = -Math.PI / 2;
+    scene.add(monster);
+
+    var camera = new T.PerspectiveCamera(42, 1, 0.1, 80);
+    var fallenHead = null;
+    var swingT = 0;
+
+    var c = {
+      scene: scene, camera: camera, over: false, won: false,
+      timeLeft: 12, hudTimer: 0, t: 0, monsterSpeed: 1.15,
+      attackMin: -3.8, attackMax: -1.4,
+      onResize: function (w, h) {
+        camera.aspect = w / h;
+        camera.updateProjectionMatrix();
+      },
+      tryAttack: function () {
+        if (c.over) return false;
+        swingT = 0.35;
+        knife.rotation.z = -1.2;
+        var mx = monster.position.x;
+        if (mx >= c.attackMin && mx <= c.attackMax) {
+          c.over = true;
+          c.won = true;
+          fallenHead = M.detachHead(monster, scene);
+          if (opts.onWin) opts.onWin();
+          return true;
+        }
+        return false;
+      },
+      update: function (dt) {
+        c.t += dt;
+        if (player.userData.tick) player.userData.tick(dt, c.t);
+        if (swingT > 0) {
+          swingT -= dt;
+          knife.rotation.z = -0.3 - (swingT / 0.35) * 0.9;
+        } else {
+          knife.rotation.z = -0.3 + Math.sin(c.t * 3) * 0.05;
+        }
+        if (fallenHead && fallenHead.userData.tick) fallenHead.userData.tick(dt);
+        if (c.over && c.won) {
+          camera.position.set(-1, 2.2, 6);
+          camera.lookAt(-2, 1, 0);
+          return;
+        }
+        if (!c.over) {
+          c.timeLeft -= dt;
+          c.hudTimer += dt;
+          if (c.hudTimer > 0.15) {
+            c.hudTimer = 0;
+            if (opts.onHud) opts.onHud(Math.ceil(c.timeLeft), monster.position.x >= c.attackMin && monster.position.x <= c.attackMax);
+          }
+          if (c.timeLeft <= 0) {
+            c.timeLeft = 0;
+            c.over = true;
+            if (monster.userData.scare) monster.userData.scare();
+            if (opts.onLose) opts.onLose();
+            return;
+          }
+          monster.position.x += c.monsterSpeed * dt;
+          if (monster.userData.tick) monster.userData.tick(dt, c.t);
+          if (monster.position.x > -1.0) {
+            c.over = true;
+            if (monster.userData.scare) monster.userData.scare();
+            if (opts.onLose) opts.onLose();
+          }
+        } else if (!c.won && monster.userData.tick) {
+          monster.userData.tick(dt, c.t);
+        }
+        camera.position.set(-1.5, 2.0, 7.5);
+        camera.lookAt(monster.position.x * 0.3 - 1, 1.2, 0);
+      }
+    };
+    return c;
+  }
+
+  /* ============================================================
+     CARRERA META: runner lateral hacia la meta, saltar obstáculos
+     ============================================================ */
+  function buildCarreraMeta(opts) {
+    var scene = newScene();
+    var trackLen = 28;
+    groundPlane(scene, "#3a2066", trackLen + 10);
+
+    // pista visual
+    var lane = new T.Mesh(new T.PlaneGeometry(4, trackLen), M._mat("#4a2878", { roughness: 0.9 }));
+    lane.rotation.x = -Math.PI / 2;
+    lane.position.set(0, 0.02, -trackLen / 2 + 2);
+    scene.add(lane);
+
+    // meta (línea de llegada)
+    var meta = new T.Group();
+    meta.add(M._pos(M._box(4.2, 0.12, 0.15, "#fff"), 0, 0.06, 0));
+    meta.add(M._pos(M._box(0.12, 2.2, 0.12, "#ffd54f"), -1.8, 1.1, 0));
+    meta.add(M._pos(M._box(0.12, 2.2, 0.12, "#ffd54f"), 1.8, 1.1, 0));
+    meta.add(M._pos(M._box(3.6, 0.12, 0.12, "#ff4081"), 0, 2.15, 0));
+    meta.position.set(0, 0, -trackLen + 2);
+    scene.add(meta);
+
+    var runner = M.buildDoll(opts.skinId || "muneca");
+    runner.scale.set(0.55, 0.55, 0.55);
+    runner.position.set(0, 0, 3);
+    scene.add(runner);
+
+    var chaser = M.buildPurpleMonster();
+    chaser.scale.set(0.85, 0.85, 0.85);
+    chaser.position.set(0, 0, 6);
+    scene.add(chaser);
+
+    var totalBoxes = 5;
+    var boxes = [];
+    var obstacles = [];
+    for (var i = 0; i < totalBoxes; i++) {
+      var bz = -2 - i * (trackLen / totalBoxes);
+      var bg = new T.Group();
+      bg.add(M._box(0.45, 0.45, 0.45, "#c8862b"));
+      bg.add(M._pos(M._sph(0.1, "#ffd54f"), 0, 0.28, 0));
+      bg.position.set((i % 2 === 0 ? -0.9 : 0.9), 0.35, bz);
+      scene.add(bg);
+      boxes.push({ g: bg, grabbed: false });
+    }
+    for (var oi = 0; oi < 4; oi++) {
+      var oz = -5 - oi * 5.5;
+      var ob = M._box(0.7, 0.7, 0.7, "#5a2a8a");
+      ob.position.set(0, 0.35, oz);
+      scene.add(ob);
+      obstacles.push({ mesh: ob, z: oz, h: 0.7 });
+    }
+
+    var camera = new T.PerspectiveCamera(50, 1, 0.1, 120);
+    var runSpeed = 5.5;
+    var chaserSpeed = 4.8;
+    var jump = false;
+    var vy = 0;
+    var grounded = true;
+    var keys = {};
+
+    var c = {
+      scene: scene, camera: camera, over: false, grabbed: 0,
+      dist: 0, t: 0, hudTimer: 0,
+      onResize: function (w, h) {
+        camera.aspect = w / h;
+        camera.updateProjectionMatrix();
+      },
+      setMove: function (dir, val) { keys[dir] = val; },
+      clearMove: function () { keys = {}; },
+      jump: function () {
+        if (c.over || !grounded) return;
+        vy = 5.5;
+        grounded = false;
+      },
+      update: function (dt) {
+        c.t += dt;
+        if (runner.userData.tick) runner.userData.tick(dt, c.t);
+        if (chaser.userData.tick) chaser.userData.tick(dt, c.t);
+        if (!c.over) {
+          c.hudTimer += dt;
+          if (c.hudTimer > 0.2) {
+            c.hudTimer = 0;
+            if (opts.onHud) opts.onHud(c.grabbed, totalBoxes, Math.floor(c.dist));
+          }
+          if (keys.up) c.jump();
+
+          runner.position.z -= runSpeed * dt;
+          c.dist = Math.max(0, 3 - runner.position.z);
+
+          vy -= 14 * dt;
+          runner.position.y += vy * dt;
+          if (runner.position.y <= 0) {
+            runner.position.y = 0;
+            vy = 0;
+            grounded = true;
+          }
+
+          // colisión con obstáculos (rebote / tropezar)
+          obstacles.forEach(function (ob) {
+            var dz = Math.abs(runner.position.z - ob.z);
+            if (dz < 0.45 && runner.position.y < ob.h + 0.1) {
+              runner.position.z += 0.8;
+              vy = 2;
+              grounded = false;
+            }
+          });
+
+          // cajitas
+          boxes.forEach(function (b) {
+            if (b.grabbed) return;
+            var dx = b.g.position.x - runner.position.x;
+            var dz = b.g.position.z - runner.position.z;
+            if (dx * dx + dz * dz < 0.55) {
+              b.grabbed = true;
+              scene.remove(b.g);
+              disposeObject(b.g);
+              c.grabbed++;
+            }
+            b.g.rotation.y += dt * 3;
+            b.g.position.y = 0.35 + Math.sin(c.t * 4 + b.g.position.z) * 0.08;
+          });
+
+          // perseguidor
+          var cdz = runner.position.z - chaser.position.z;
+          if (c.t > 1.2) chaser.position.z -= chaserSpeed * dt;
+          chaser.position.x += (runner.position.x - chaser.position.x) * dt * 2;
+          if (cdz < 1.0 && runner.position.y < 0.5) end("atrapado");
+
+          // meta
+          if (runner.position.z <= -trackLen + 3) end("meta");
+        }
+
+        var camZ = runner.position.z + 8;
+        camera.position.set(6, 3.5, camZ);
+        camera.lookAt(runner.position.x, 1.0, runner.position.z - 4);
+      }
+    };
+
+    function end(reason) {
+      if (c.over) return;
+      c.over = true;
+      if (reason === "atrapado" && chaser.userData.scare) chaser.userData.scare();
+      if (opts.onFinish) opts.onFinish(reason, c.grabbed, totalBoxes);
+    }
+
+    return c;
+  }
+
+  /* ============================================================
+     PINTAR IGUAL: fondo 3D con monstruo (lienzo en HTML)
+     ============================================================ */
+  function buildPintar(opts) {
+    var scene = newScene();
+    groundPlane(scene, "#2a1545", 20);
+    var mon = M.buildPurpleMonster();
+    mon.scale.set(0.9, 0.9, 0.9);
+    mon.position.set(0, 0, 0);
+    scene.add(mon);
+    var camera = new T.PerspectiveCamera(48, 1, 0.1, 60);
+    return {
+      scene: scene, camera: camera, mon: mon, t: 0,
+      onResize: function (w, h) {
+        camera.aspect = w / h;
+        camera.position.set(0, 1.2, w / h < 0.8 ? 4.5 : 3.8);
+        camera.lookAt(0, 1.0, 0);
+        camera.updateProjectionMatrix();
+      },
+      update: function (dt) {
+        this.t += dt;
+        if (mon.userData.tick) mon.userData.tick(dt, this.t);
+        mon.rotation.y = Math.sin(this.t * 0.5) * 0.3;
+      }
+    };
+  }
+
   /* ---------- Dispatcher ---------- */
   var builders = {
     intro: buildIntro, skins: buildSkins, puertas: buildPuertas,
-    escondite: buildEscondite, carrera: buildCarrera, preguntas: buildPreguntas
+    escondite: buildEscondite, carrera: buildCarrera, preguntas: buildPreguntas,
+    enfrentamiento: buildEnfrentamiento, carrerameta: buildCarreraMeta, pintar: buildPintar
   };
   function go(name, opts) {
     var c = builders[name](opts || {});

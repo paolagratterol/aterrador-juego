@@ -450,6 +450,158 @@
     return fn();
   }
 
+  /* Minion procedural (cuerpo amarillo, gafas, overol azul) */
+  function buildMinion(variant) {
+    var g = new T.Group();
+    var yellow = variant === 1 ? "#ffe566" : (variant === 2 ? "#ffd633" : "#ffeb3b");
+    var blue = "#1e5fa8";
+    var strap = "#3a3a3a";
+    // piernas cortas
+    g.add(pos(cyl(0.09, 0.1, 0.22, blue), -0.1, 0.14, 0));
+    g.add(pos(cyl(0.09, 0.1, 0.22, blue), 0.1, 0.14, 0));
+    g.add(pos(box(0.14, 0.08, 0.2, "#222"), -0.1, 0.04, 0.03));
+    g.add(pos(box(0.14, 0.08, 0.2, "#222"), 0.1, 0.04, 0.03));
+    // cuerpo cápsula (cilindro + domo)
+    g.add(pos(cyl(0.22, 0.24, 0.42, yellow), 0, 0.48, 0));
+    var belly = sph(0.24, yellow);
+    belly.scale.set(1, 0.85, 0.9);
+    g.add(pos(belly, 0, 0.52, 0.04));
+    // overol azul (peto)
+    g.add(pos(box(0.34, 0.34, 0.12, blue), 0, 0.5, 0.14));
+    g.add(pos(box(0.1, 0.22, 0.08, blue), -0.14, 0.44, 0.16));
+    g.add(pos(box(0.1, 0.22, 0.08, blue), 0.14, 0.44, 0.16));
+    // bolsillo del overol
+    g.add(pos(box(0.12, 0.1, 0.04, "#174a82"), 0, 0.42, 0.2));
+    // brazos
+    var aL = cyl(0.055, 0.06, 0.28, yellow); aL.rotation.z = 0.55; g.add(pos(aL, -0.28, 0.56, 0));
+    var aR = cyl(0.055, 0.06, 0.28, yellow); aR.rotation.z = -0.55; g.add(pos(aR, 0.28, 0.56, 0));
+    g.add(pos(sph(0.065, "#222"), -0.38, 0.44, 0.02));
+    g.add(pos(sph(0.065, "#222"), 0.38, 0.44, 0.02));
+    // cabeza
+    g.add(pos(sph(0.26, yellow), 0, 0.92, 0));
+    // gafas (dos lentes + puente)
+    g.add(pos(cyl(0.11, 0.11, 0.05, "#555", { metalness: 0.7, roughness: 0.3 }), -0.13, 0.94, 0.2));
+    g.add(pos(cyl(0.11, 0.11, 0.05, "#555", { metalness: 0.7, roughness: 0.3 }), 0.13, 0.94, 0.2));
+    g.add(pos(box(0.08, 0.03, 0.04, strap), 0, 0.94, 0.21));
+    g.add(pos(box(0.42, 0.025, 0.03, strap), 0, 0.98, 0.05));
+    // ojos detrás de las gafas
+    g.add(pos(sph(0.05, "#fff"), -0.13, 0.94, 0.24));
+    g.add(pos(sph(0.05, "#fff"), 0.13, 0.94, 0.24));
+    g.add(pos(sph(0.025, "#222"), -0.13, 0.93, 0.28));
+    g.add(pos(sph(0.025, "#222"), 0.13, 0.93, 0.28));
+    // boquita sonriente
+    var sm = tor(0.06, 0.018, "#5a1020"); sm.rotation.x = Math.PI / 2; sm.rotation.z = Math.PI;
+    g.add(pos(sm, 0, 0.84, 0.24));
+    // pelo (1-3 pelitos)
+    if (variant !== 2) {
+      g.add(pos(cyl(0.012, 0.012, 0.08, "#222"), -0.04, 1.14, 0.02));
+      g.add(pos(cyl(0.012, 0.012, 0.1, "#222"), 0, 1.16, 0));
+      g.add(pos(cyl(0.012, 0.012, 0.07, "#222"), 0.05, 1.13, -0.02));
+    }
+    g.userData.bouncePhase = (variant || 0) * 1.3;
+    g.userData.stride = 0.8 + (variant || 0) * 0.15;
+    return g;
+  }
+
+  /* Oscurece un personaje (skins de pago en el desfile) */
+  function darkenGroup(g, factor) {
+    if (!g) return;
+    var k = factor == null ? 0.62 : factor;
+    g.traverse(function (o) {
+      if (!o.isMesh || !o.material) return;
+      var mats = Array.isArray(o.material) ? o.material : [o.material];
+      mats.forEach(function (m) {
+        if (!m.userData._origColor) {
+          m.userData._origColor = m.color.clone();
+        }
+        m.color.copy(m.userData._origColor).multiplyScalar(k);
+        if (m.emissive) m.emissiveIntensity = (m.emissiveIntensity || 0) * k * 0.7;
+      });
+    });
+  }
+
+  /* Moneda flotante (sprite 3D) sobre skins de pago */
+  function buildCoinSprite() {
+    var c = document.createElement("canvas");
+    c.width = 96; c.height = 96;
+    var ctx = c.getContext("2d");
+    ctx.font = "72px Arial";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("🪙", 48, 52);
+    var tex = new T.CanvasTexture(c);
+    var mat = new T.SpriteMaterial({ map: tex, transparent: true, depthTest: false });
+    var spr = new T.Sprite(mat);
+    spr.scale.set(0.55, 0.55, 1);
+    spr.position.y = 2.35;
+    spr.userData.isCoin = true;
+    return spr;
+  }
+
+  /* Mini peluche LOL (para macarena en escondite gracioso) */
+  function buildMiniLolPlush(skinId) {
+    var g = new T.Group();
+    var dressC = "#ff6fb5", hairC = "#9b59b6", accent = "#e84393";
+    if (skinId === "muneca") { dressC = RED; hairC = REDHAIR; accent = "#ff5fa2"; }
+    else if (skinId === "sirena") { dressC = "#19c3c3"; hairC = "#ffd34d"; accent = "#5fd0ff"; }
+    else if (skinId === "lolmejorada") { dressC = "#ff2e63"; hairC = REDHAIR; accent = "#ff7ac3"; }
+    else if (skinId === "arcoiris") { dressC = "#9b30ff"; hairC = "#3a2a1a"; accent = "#ff5fa2"; }
+    // piernitas
+    g.add(pos(cyl(0.045, 0.045, 0.18, SKIN), -0.07, 0.14, 0));
+    g.add(pos(cyl(0.045, 0.045, 0.18, SKIN), 0.07, 0.14, 0));
+    g.add(pos(box(0.1, 0.06, 0.12, accent), -0.07, 0.04, 0.01));
+    g.add(pos(box(0.1, 0.06, 0.12, accent), 0.07, 0.04, 0.01));
+    // vestidito
+    g.add(pos(cyl(0.1, 0.16, 0.22, dressC), 0, 0.32, 0));
+    g.add(pos(tor(0.16, 0.025, "#ffd1ec"), 0, 0.22, 0));
+    // cabezota grande (estilo LOL)
+    g.add(pos(sph(0.22, "#ffe0ec"), 0, 0.62, 0));
+    g.add(pos(sph(0.23, hairC), 0, 0.68, -0.02));
+    g.add(pos(sph(0.09, hairC), -0.2, 0.74, -0.02));
+    g.add(pos(sph(0.09, hairC), 0.2, 0.74, -0.02));
+    // ojos enormes con brillo
+    g.add(pos(sph(0.07, "#fff"), -0.08, 0.64, 0.17));
+    g.add(pos(sph(0.07, "#fff"), 0.08, 0.64, 0.17));
+    g.add(pos(sph(0.045, "#5b3a9b"), -0.08, 0.63, 0.21));
+    g.add(pos(sph(0.045, "#5b3a9b"), 0.08, 0.63, 0.21));
+    g.add(pos(sph(0.018, "#fff"), -0.065, 0.67, 0.24));
+    g.add(pos(sph(0.018, "#fff"), 0.095, 0.67, 0.24));
+    g.add(pos(sph(0.035, "#ff9eb8", { transparent: true, opacity: 0.75 }), -0.16, 0.56, 0.14));
+    g.add(pos(sph(0.035, "#ff9eb8", { transparent: true, opacity: 0.75 }), 0.16, 0.56, 0.14));
+    var sm = tor(0.035, 0.012, "#d6336c"); sm.rotation.x = Math.PI / 2; sm.rotation.z = Math.PI;
+    g.add(pos(sm, 0, 0.52, 0.2));
+    // bracitos para que parezca que la sostienen
+    var aL = cyl(0.028, 0.028, 0.16, SKIN); aL.rotation.z = 0.6; g.add(pos(aL, -0.14, 0.38, 0.02));
+    var aR = cyl(0.028, 0.028, 0.16, SKIN); aR.rotation.z = -0.6; g.add(pos(aR, 0.14, 0.38, 0.02));
+    g.userData.tick = function (dt, t) {
+      g.rotation.z = Math.sin(t * 5) * 0.08;
+      g.position.y = Math.sin(t * 8) * 0.02;
+    };
+    return g;
+  }
+
+  /* Hombros articulados para macarena (muñecas y monstruos sin hombros) */
+  function ensureMacarenaShoulders(g) {
+    if (!g || !g.userData) return null;
+    if (g.userData.macShoulders) return g.userData.macShoulders;
+    var shY = g.userData.macShY != null ? g.userData.macShY : 1.02;
+    var armSkin = g.userData.macArmColor || SKIN;
+    var shoulderL = new T.Group();
+    shoulderL.position.set(-0.26, shY, 0);
+    var armLMesh = cyl(0.055, 0.05, 0.42, armSkin);
+    armLMesh.position.y = -0.21;
+    shoulderL.add(armLMesh);
+    g.add(shoulderL);
+    var shoulderR = new T.Group();
+    shoulderR.position.set(0.26, shY, 0);
+    var armRMesh = cyl(0.055, 0.05, 0.42, armSkin);
+    armRMesh.position.y = -0.21;
+    shoulderR.add(armRMesh);
+    g.add(shoulderR);
+    g.userData.macShoulders = { L: shoulderL, R: shoulderR };
+    return g.userData.macShoulders;
+  }
+
   /* ============================================================
      MONSTRUOS (variados, para Puertas y Carrera)
      buildMonster(id, theme) -> THREE.Group (pies en y=0)
@@ -657,6 +809,20 @@
         g.add(pos(sph(0.13, "#ffea00"), 0, 1.45, 0));
         // sombrero
         g.add(pos(cone(0.18, 0.3, fun ? "#4db8ff" : "#311b92"), 0, 1.6, 0));
+        // brazos articulados (para macarena)
+        var shoulderL = new T.Group();
+        shoulderL.position.set(-0.28, 0.85, 0);
+        var armLMesh = cyl(0.06, 0.05, 0.45, "#fff6e9");
+        armLMesh.position.y = -0.22;
+        shoulderL.add(armLMesh);
+        g.add(shoulderL);
+        var shoulderR = new T.Group();
+        shoulderR.position.set(0.28, 0.85, 0);
+        var armRMesh = cyl(0.06, 0.05, 0.45, "#fff6e9");
+        armRMesh.position.y = -0.22;
+        shoulderR.add(armRMesh);
+        g.add(shoulderR);
+        g.userData.macShoulders = { L: shoulderL, R: shoulderR };
         break;
       }
       case "vampiro": {
@@ -852,6 +1018,10 @@
   // Animación de susto de un monstruo (llamar en el loop de render)
   function updateMonsterScare(mon, dt, t) {
     if (!mon || !mon.userData) return;
+    if (mon.userData.macarena > 0) {
+      updateMacarena(mon, mon.userData.macarena);
+      return;
+    }
     if (mon.userData.bellyFace) {
       // la cara roja se mueve por la barriga
       var f = mon.userData.bellyFace;
@@ -867,6 +1037,54 @@
       var sm = mon.userData.scaryMouth;
       if (sm) { sm.visible = true; sm.scale.setScalar(0.8 + Math.abs(Math.sin(s * 14)) * 0.6); }
     }
+  }
+
+  // Macarena: secuencia de brazos reconocible (payaso con hombros articulados)
+  var MACARENA_STEPS = [
+    { lz: 1.45, rz: -1.45, lx: 0, rx: 0, ly: 0, ry: 0 },       // brazos al frente
+    { lz: 0.35, rz: -0.35, lx: 0.55, rx: -0.55, ly: 0.1, ry: 0.1 }, // cruzados
+    { lz: -0.35, rz: 0.35, lx: -0.55, rx: 0.55, ly: 0.1, ry: 0.1 }, // cruzados al revés
+    { lz: -2.4, rz: 2.4, lx: 0.9, rx: -0.9, ly: 0.35, ry: 0.35 },   // manos en la nuca
+    { lz: -2.9, rz: 2.9, lx: 0, rx: 0, ly: 0, ry: 0 }               // brazos arriba
+  ];
+  function lerpMac(a, b, k) {
+    return {
+      lz: a.lz + (b.lz - a.lz) * k, rz: a.rz + (b.rz - a.rz) * k,
+      lx: a.lx + (b.lx - a.lx) * k, rx: a.rx + (b.rx - a.rx) * k,
+      ly: a.ly + (b.ly - a.ly) * k, ry: a.ry + (b.ry - a.ry) * k
+    };
+  }
+  function applyMacPose(sh, p) {
+    sh.L.rotation.z = p.lz; sh.L.rotation.x = p.lx; sh.L.rotation.y = p.ly;
+    sh.R.rotation.z = p.rz; sh.R.rotation.x = p.rx; sh.R.rotation.y = p.ry;
+  }
+  function updateMacarena(mon, danceTime) {
+    var sh = mon.userData.macShoulders;
+    if (!sh) {
+      mon.rotation.z = Math.sin(danceTime * 12) * 0.35;
+      mon.position.y = Math.abs(Math.sin(danceTime * 10)) * 0.25;
+      return;
+    }
+    var stepDur = 0.65;
+    var total = MACARENA_STEPS.length;
+    var idx = Math.floor(danceTime / stepDur) % total;
+    var next = (idx + 1) % total;
+    var blend = (danceTime % stepDur) / stepDur;
+    var pose = lerpMac(MACARENA_STEPS[idx], MACARENA_STEPS[next], blend);
+    applyMacPose(sh, pose);
+    mon.rotation.y = Math.sin(danceTime * 2.8) * 0.25;
+    mon.rotation.z = Math.sin(danceTime * 6) * 0.08;
+    mon.position.y = Math.abs(Math.sin(danceTime * 8)) * 0.18;
+  }
+  function startMacarena(mon) {
+    if (!mon || !mon.userData) return;
+    ensureMacarenaShoulders(mon);
+    mon.userData.macarena = 0.001;
+    if (mon.userData.scaryMouth) mon.userData.scaryMouth.visible = false;
+    mon.userData.scaring = 0;
+  }
+  function stopMacarena(mon) {
+    if (mon && mon.userData) mon.userData.macarena = 0;
   }
 
   // Cuarto/sala detrás de una puerta
@@ -945,6 +1163,126 @@
     return g;
   }
 
+  // Cuchillo para Enfrentamiento
+  function buildKnife() {
+    var g = new T.Group();
+    var blade = box(0.04, 0.35, 0.08, SILVER, { metalness: 0.9, roughness: 0.2 });
+    g.add(pos(blade, 0, 0.22, 0));
+    g.add(pos(box(0.14, 0.04, 0.06, GOLD, { metalness: 0.85 }), 0, 0.02, 0));
+    g.add(pos(cyl(0.025, 0.03, 0.14, "#5d4037"), 0, -0.06, 0));
+    g.userData.blade = blade;
+    return g;
+  }
+
+  // Monstruo morado humanoide (Modo Medio — Enfrentamiento)
+  function buildPurpleMonster() {
+    var g = new T.Group();
+    var PURPLE = "#7b1fa2";
+    var PURPLE2 = "#9c27b0";
+    var PINK = "#ff4081";
+    var BLACK = "#1a1a1a";
+
+    var legL = cyl(0.14, 0.16, 0.75, PINK);
+    g.add(pos(legL, -0.18, 0.38, 0));
+    var legR = cyl(0.14, 0.16, 0.75, BLACK);
+    g.add(pos(legR, 0.18, 0.38, 0));
+    g.add(pos(box(0.32, 0.38, 0.22, PINK), -0.18, 0.55, 0));
+    g.add(pos(box(0.32, 0.38, 0.22, BLACK), 0.18, 0.55, 0));
+    g.add(pos(box(0.22, 0.1, 0.32, "#333"), -0.18, 0.05, 0.04));
+    g.add(pos(box(0.22, 0.1, 0.32, "#333"), 0.18, 0.05, 0.04));
+
+    g.add(pos(cyl(0.32, 0.38, 0.85, PURPLE), 0, 1.05, 0));
+    g.add(pos(box(0.5, 0.12, 0.28, PURPLE2), 0, 1.42, 0));
+
+    var armL = cyl(0.09, 0.1, 0.65, PURPLE2);
+    armL.rotation.z = 0.4;
+    g.add(pos(armL, -0.42, 1.0, 0));
+    var armR = cyl(0.09, 0.1, 0.65, PURPLE2);
+    armR.rotation.z = -0.4;
+    g.add(pos(armR, 0.42, 1.0, 0));
+    g.add(pos(sph(0.1, PURPLE), -0.55, 0.68, 0));
+    g.add(pos(sph(0.1, PURPLE), 0.55, 0.68, 0));
+
+    var headGroup = new T.Group();
+    headGroup.name = "headGroup";
+    headGroup.add(pos(sph(0.32, PURPLE), 0, 0, 0));
+    headGroup.add(pos(sph(0.34, REDHAIR), 0, 0.08, -0.06));
+    headGroup.add(pos(box(0.55, 0.14, 0.18, REDHAIR), 0, 0.18, 0.14));
+    headGroup.add(pos(cyl(0.06, 0.04, 0.45, REDHAIR), -0.28, -0.12, -0.04));
+    headGroup.add(pos(cyl(0.06, 0.04, 0.45, REDHAIR), 0.28, -0.12, -0.04));
+    headGroup.add(pos(sph(0.09, "#ffff00"), -0.12, 0.04, 0.28));
+    headGroup.add(pos(sph(0.09, "#ffff00"), 0.12, 0.04, 0.28));
+    headGroup.add(pos(sph(0.05, "#111"), -0.12, 0.04, 0.34));
+    headGroup.add(pos(sph(0.05, "#111"), 0.12, 0.04, 0.34));
+    var mouth = tor(0.1, 0.025, "#3a0000");
+    mouth.rotation.x = Math.PI / 2;
+    headGroup.add(pos(mouth, 0, -0.1, 0.28));
+    headGroup.add(pos(sph(0.06, "#d40000"), -0.18, -0.02, 0.26));
+    headGroup.add(pos(sph(0.05, "#b3001b"), 0.16, 0.06, 0.24));
+    headGroup.add(pos(sph(0.04, "#ff1744"), 0.08, -0.14, 0.27));
+    headGroup.add(pos(box(0.04, 0.12, 0.02, "#d40000"), -0.1, -0.08, 0.3));
+    headGroup.position.set(0, 1.65, 0);
+    g.add(headGroup);
+
+    g.userData.headGroup = headGroup;
+    g.userData.legs = [legL, legR];
+    g.userData.armL = armL;
+    g.userData.armR = armR;
+    g.userData.walkPhase = 0;
+
+    g.userData.tick = function (dt, t) {
+      if (g.userData.headDetached) return;
+      g.userData.walkPhase += dt * 5;
+      var ph = g.userData.walkPhase;
+      g.userData.legs.forEach(function (leg, i) {
+        leg.rotation.x = Math.sin(ph + i * Math.PI) * 0.45;
+      });
+      g.position.y = Math.abs(Math.sin(ph * 2)) * 0.06;
+      g.rotation.z = Math.sin(ph) * 0.04;
+      g.userData.armL.rotation.x = Math.sin(ph) * 0.35;
+      g.userData.armR.rotation.x = -Math.sin(ph) * 0.35;
+    };
+
+    g.userData.scare = function () {
+      g.scale.setScalar(1.25);
+      if (g.userData.headGroup) g.userData.headGroup.rotation.z = 0.2;
+    };
+
+    return g;
+  }
+
+  // Separa la cabeza del monstruo morado y la hace caer
+  function detachHead(monster, scene) {
+    if (!monster || !monster.userData.headGroup || monster.userData.headDetached) return null;
+    var head = monster.userData.headGroup;
+    monster.userData.headDetached = true;
+    var worldPos = new T.Vector3();
+    head.getWorldPosition(worldPos);
+    var worldQuat = new T.Quaternion();
+    head.getWorldQuaternion(worldQuat);
+    monster.remove(head);
+    scene.add(head);
+    head.position.copy(worldPos);
+    head.quaternion.copy(worldQuat);
+    head.userData.vy = 0;
+    head.userData.vx = 0.8;
+    head.userData.vz = 0.3;
+    head.userData.spin = 2.5;
+    head.userData.tick = function (dt) {
+      head.userData.vy -= 9.8 * dt;
+      head.position.y += head.userData.vy * dt;
+      head.position.x += head.userData.vx * dt;
+      head.position.z += head.userData.vz * dt;
+      head.rotation.z += head.userData.spin * dt;
+      if (head.position.y < 0.15) {
+        head.position.y = 0.15;
+        head.userData.vy = Math.abs(head.userData.vy) * 0.3;
+        head.userData.spin *= 0.8;
+      }
+    };
+    return head;
+  }
+
   // Personaje pequeño asustado (otra muñequita en la sala)
   function buildLittleDoll(color) {
     var g = new T.Group();
@@ -972,6 +1310,9 @@
     } else if (theme === "gracioso") {
       scene.background = new T.Color("#bfe3ff");
       scene.fog = new T.Fog("#cfeaff", 14, 40);
+    } else if (theme === "medio") {
+      scene.background = new T.Color("#2a1545");
+      scene.fog = new T.Fog("#2a1545", 10, 30);
     } else {
       scene.background = new T.Color("#1a1030");
       scene.fog = new T.Fog("#1a1030", 12, 34);
@@ -1005,6 +1346,13 @@
       var blue = new T.PointLight(0x4db8ff, 0.6, 32);
       blue.position.set(4, 5, 2);
       scene.add(blue);
+    } else if (theme === "medio") {
+      var mp = new T.PointLight(0xe040fb, 1.0, 32);
+      mp.position.set(-4, 6, 4);
+      scene.add(mp);
+      var mk = new T.PointLight(0xff4081, 0.7, 28);
+      mk.position.set(5, 4, 2);
+      scene.add(mk);
     } else {
       var p = new T.PointLight(0xb388ff, 0.9, 32);
       p.position.set(-4, 6, 4);
@@ -1014,6 +1362,11 @@
 
   window.ATModels = {
     buildDoll: buildDoll,
+    buildMinion: buildMinion,
+    darkenGroup: darkenGroup,
+    buildCoinSprite: buildCoinSprite,
+    buildMiniLolPlush: buildMiniLolPlush,
+    ensureMacarenaShoulders: ensureMacarenaShoulders,
     buildMonster: buildMonster,
     buildBush: buildBush,
     buildGardenBall: buildGardenBall,
@@ -1025,7 +1378,13 @@
     buildSnack: buildSnack,
     buildTower: buildTower,
     buildLittleDoll: buildLittleDoll,
+    buildKnife: buildKnife,
+    buildPurpleMonster: buildPurpleMonster,
+    detachHead: detachHead,
     updateMonsterScare: updateMonsterScare,
+    updateMacarena: updateMacarena,
+    startMacarena: startMacarena,
+    stopMacarena: stopMacarena,
     applyTheme: applyTheme,
     standardLights: standardLights,
     _mat: mat, _box: box, _sph: sph, _cyl: cyl, _cone: cone, _tor: tor, _pos: pos, _glowMat: glowMat

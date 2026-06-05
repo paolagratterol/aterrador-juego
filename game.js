@@ -13,7 +13,8 @@
     coins: 0,
     selectedSkin: "muneca",
     ownedSkins: ["muneca"],
-    ownedPowers: []
+    ownedPowers: [],
+    medioEnfrentamientoWon: false
   };
   var state = loadState();
 
@@ -26,7 +27,8 @@
         coins: typeof data.coins === "number" ? data.coins : 0,
         selectedSkin: data.selectedSkin || "muneca",
         ownedSkins: Array.isArray(data.ownedSkins) ? data.ownedSkins : ["muneca"],
-        ownedPowers: Array.isArray(data.ownedPowers) ? data.ownedPowers : []
+        ownedPowers: Array.isArray(data.ownedPowers) ? data.ownedPowers : [],
+        medioEnfrentamientoWon: !!data.medioEnfrentamientoWon
       };
     } catch (e) {
       return clone(DEFAULT_STATE);
@@ -52,6 +54,12 @@
   var skinsCtrl = null;
   var preguntasCtrl = null;
   var esconditeCtrl = null;
+  var enfrentamientoCtrl = null;
+  var carrerametaCtrl = null;
+  var pintarCtrl = null;
+  var paintColor = "#e0241b";
+  var paintDrawing = false;
+  var currentPaintShape = null;
 
   /* ============================================================
      SKINS (solo decoración)
@@ -106,8 +114,8 @@
   /* ============================================================
      NAVEGACIÓN ENTRE PANTALLAS
      ============================================================ */
-  var SCREENS = ["inicio", "tema", "menu", "puertas", "escondite", "carrera", "preguntas", "skins", "poderes"];
-  var USES_3D = { inicio: 1, puertas: 1, escondite: 1, carrera: 1, preguntas: 1, skins: 1 };
+  var SCREENS = ["inicio", "tema", "menu", "puertas", "escondite", "carrera", "preguntas", "skins", "poderes", "enfrentamiento", "carrerameta", "pintar"];
+  var USES_3D = { inicio: 1, puertas: 1, escondite: 1, carrera: 1, preguntas: 1, skins: 1, enfrentamiento: 1, carrerameta: 1, pintar: 1 };
 
   function showScreen(name, skipHistory) {
     // detener cualquier escena 3D activa
@@ -115,15 +123,26 @@
     skinsCtrl = null;
     preguntasCtrl = null;
     esconditeCtrl = null;
+    enfrentamientoCtrl = null;
+    carrerametaCtrl = null;
+    pintarCtrl = null;
     hideScare();
+    hideMacarenaBanner();
 
     if (!skipHistory && currentScreen && currentScreen !== name) {
       screenHistory.push(currentScreen);
     }
     SCREENS.forEach(function (s) {
       var el = $("screen-" + s);
-      if (el) el.classList.toggle("active", s === name);
+      if (!el) return;
+      if (s === "menu") {
+        el.classList.toggle("active", name === "menu" && currentTheme !== "medio");
+      } else {
+        el.classList.toggle("active", s === name);
+      }
     });
+    var menuMedio = $("screen-menu-medio");
+    if (menuMedio) menuMedio.classList.toggle("active", name === "menu" && currentTheme === "medio");
     currentScreen = name;
 
     $("topbar").classList.toggle("hidden", name === "inicio");
@@ -137,7 +156,12 @@
     if (name === "preguntas") initPreguntas();
     if (name === "skins") initSkins();
     if (name === "poderes") renderPowers();
-    if (name === "menu") buildFloaters($("floatersMenu"));
+    if (name === "menu") {
+      buildFloaters(currentTheme === "medio" ? $("floatersMenuMedio") : $("floatersMenu"));
+    }
+    if (name === "enfrentamiento") initEnfrentamiento();
+    if (name === "carrerameta") initCarreraMeta();
+    if (name === "pintar") initPintar();
 
     window.scrollTo(0, 0);
   }
@@ -156,10 +180,9 @@
      ============================================================ */
   function setTheme(theme) {
     currentTheme = theme;
-    document.body.classList.remove("theme-none", "theme-terror", "theme-gracioso");
+    document.body.classList.remove("theme-none", "theme-terror", "theme-gracioso", "theme-medio");
     document.body.classList.add("theme-" + theme);
     if (window.ATScenes) ATScenes.setTheme(theme);
-    buildFloaters($("floatersMenu"));
   }
 
   function buildFloaters(container) {
@@ -187,6 +210,17 @@
         d.style.animationDelay = (-rand(6)) + "s";
         d.style.fontSize = (18 + rand(22)) + "px";
         container.appendChild(d);
+      }
+    } else if (currentTheme === "medio") {
+      var sparks = ["💜", "🎈", "👹", "✨", "🔪", "🩸"];
+      for (var k = 0; k < 10; k++) {
+        var sp = document.createElement("div");
+        sp.className = "medio-spark";
+        sp.textContent = pick(sparks);
+        sp.style.left = rand(100) + "%";
+        sp.style.animationDuration = (5 + rand(7)) + "s";
+        sp.style.animationDelay = (-rand(7)) + "s";
+        container.appendChild(sp);
       }
     }
   }
@@ -216,25 +250,89 @@
      CARA ATERRADORA EN PANTALLA (overlay) + "AH AH AH"
      ============================================================ */
   var scareTimer = null;
-  function showScare(ms, label) {
+  var macarenaTimer = null;
+  function showScare(ms, label, variant) {
     var ov = $("scareOverlay");
     if (!ov) return;
+    variant = variant || "terror";
+    ov.classList.remove("scare-mild", "scare-terror-funny");
+    if (variant === "mild") ov.classList.add("scare-mild");
+    else if (variant === "terror-funny") ov.classList.add("scare-terror-funny");
+    var silly = $("scareSilly");
+    if (silly) silly.classList.toggle("hidden", variant !== "mild" && variant !== "terror-funny");
     $("scareText").textContent = label || "AH AH AH";
     ov.classList.remove("hidden");
-    // reinicia la animación
     ov.classList.remove("scare-anim");
     void ov.offsetWidth;
     ov.classList.add("scare-anim");
     if (scareTimer) clearTimeout(scareTimer);
     if (ms) scareTimer = setTimeout(hideScare, ms);
   }
-  function hideScare() { var ov = $("scareOverlay"); if (ov) ov.classList.add("hidden"); }
+  function hideScare() {
+    var ov = $("scareOverlay");
+    if (ov) {
+      ov.classList.add("hidden");
+      ov.classList.remove("scare-mild", "scare-terror-funny");
+    }
+    var silly = $("scareSilly");
+    if (silly) silly.classList.add("hidden");
+  }
+  function showMacarenaBanner(ms) {
+    var el = $("macarenaBanner");
+    if (!el) return;
+    el.classList.remove("hidden");
+    el.classList.remove("macarena-anim");
+    void el.offsetWidth;
+    el.classList.add("macarena-anim");
+    if (macarenaTimer) clearTimeout(macarenaTimer);
+    if (ms) macarenaTimer = setTimeout(hideMacarenaBanner, ms);
+  }
+  function hideMacarenaBanner() {
+    var el = $("macarenaBanner");
+    if (el) el.classList.add("hidden");
+  }
 
   /* ============================================================
-     INICIO (muñeca 3D girando)
+     INICIO (intro: minions → desfile de skins → muñeca girando)
      ============================================================ */
+  var introCtrl = null;
+
   function initInicio() {
-    if (window.ATScenes) ATScenes.go("intro", { skinId: state.selectedSkin });
+    var btn = $("btnJugar");
+    var overlay = $("introOverlay");
+    if (btn) btn.classList.add("hidden");
+    if (overlay) overlay.classList.remove("hidden");
+    setIntroPhaseLabel("¡Minions!");
+    if (window.ATScenes) {
+      introCtrl = ATScenes.go("intro", {
+        skinId: state.selectedSkin,
+        skins: SKINS.map(function (s) { return { id: s.id, name: s.name, price: s.price }; }),
+        onPhaseChange: function (phase, label) {
+          setIntroPhaseLabel(label);
+          var coinHint = $("introCoinHint");
+          if (coinHint) coinHint.classList.toggle("hidden", phase !== "parade");
+        },
+        onIntroComplete: function () {
+          if (overlay) overlay.classList.add("hidden");
+          if (btn) btn.classList.remove("hidden");
+        }
+      });
+    }
+  }
+
+  function setIntroPhaseLabel(text) {
+    var el = $("introPhaseLabel");
+    if (!el) return;
+    if (text) {
+      el.textContent = text;
+      el.classList.remove("hidden");
+    } else {
+      el.classList.add("hidden");
+    }
+  }
+
+  function skipIntro() {
+    if (introCtrl && introCtrl.skip) introCtrl.skip();
   }
 
   /* ============================================================
@@ -265,14 +363,22 @@
         $("puertasInfo").textContent = currentTheme === "terror"
           ? "¡Buuu! 😱 Toca la sala para volver, luego otra puerta..."
           : "¡Jaja! 🤣 Toca la sala para volver, luego otra puerta...";
+        if (currentTheme === "gracioso") {
+          showScare(850, "¡AH AH!", "mild");
+        } else if (info.id === "payaso") {
+          showScare(1200, "AH AH AH... 🤡", "terror-funny");
+        }
       },
       onSala: function (info, action) {
         var copy = SALA_TEXT[action] || SALA_TEXT.sonreir;
         $("puertasMonsterName").textContent = (currentTheme === "gracioso" ? copy.g : copy.t);
         $("puertasReveal").classList.remove("hidden");
-        // sustos: cara aterradora en pantalla
-        if (currentTheme === "terror" && (action === "asustar" || info.id === "aterrador")) {
-          showScare(1500, "AH AH AH");
+        if (currentTheme === "gracioso" && (action === "asustar" || info.id === "aterrador")) {
+          showScare(950, action === "asustar" ? "¡BUU! 😜" : "¡AH! 🤡", "mild");
+        } else if (currentTheme === "terror" && (action === "asustar" || info.id === "aterrador")) {
+          showScare(1500, action === "asustar" ? "AH AH AH... 🤡" : "AH AH AH", "terror-funny");
+        } else if (currentTheme === "terror" && info.id === "payaso") {
+          showScare(1100, "AH AH... ¡jaja! 🤡", "terror-funny");
         }
       },
       onSalaExit: function () {
@@ -300,12 +406,20 @@
       onStatus: function (txt) { $("esconditeStatus").textContent = txt; },
       onFound: function (theme) {
         if (theme === "gracioso") {
-          $("esconditeStatus").textContent = "¡Te encontró el payaso! 🤡 Y baila macarena 💃";
-          bigMessage("🤡 ¡TE ENCONTRÉ! 🎉<br>El payaso baila la macarena 💃🕺", 2400);
+          $("esconditeStatus").textContent = "¡Te encontró el payaso! 🤡 ¡Van al escenario a bailar! 💃";
+          showScare(700, "¡TE VI! 😜", "mild");
+          showMacarenaBanner(7200);
         } else {
           $("esconditeStatus").textContent = "¡El monstruo te encontró! 😱 ¡Corre!";
-          showScare(2200, "AH AH AH");
+          showScare(2200, "AH AH AH... 🤡", "terror-funny");
         }
+      },
+      onDanceComplete: function () {
+        $("esconditeStatus").textContent = "¡Qué baile tan chévere! 🤡💃 ¡Con tu mini peluche LOL! 🧸";
+        bigMessage(
+          "🤡 ¡TE ENCONTRÉ EN LA CUEVITA! 🎉<br><span style='font-size:22px'>¡MACARENA JUNTOS! 💃🕺🧸</span>",
+          3200
+        );
       },
       onIdleOut: function () {
         bigMessage("😴 ¡TE SALES DEL JUEGO! 😴<br><span style='font-size:18px'>(Te quedaste quieta mucho tiempo)</span>", 2600);
@@ -358,8 +472,11 @@
         var msg;
         if (reason === "todas") msg = "🏆 ¡AGARRASTE TODAS! Ganaste " + fmtMoney(earned) + " 🤑";
         else if (reason === "atrapado") {
-          msg = "😱 ¡Te atrapó! Pero te llevas " + fmtMoney(earned);
-          if (currentTheme === "terror") showScare(1800, "AH AH AH");
+          msg = currentTheme === "gracioso"
+            ? "🤡 ¡Te atrapó el payaso! Pero te llevas " + fmtMoney(earned)
+            : "😱 ¡Te atrapó! Pero te llevas " + fmtMoney(earned);
+          if (currentTheme === "terror") showScare(1800, "AH AH AH... 🤡", "terror-funny");
+          else showScare(900, "¡AH AH! 😜", "mild");
         }
         else msg = "⏱️ ¡Se acabó el tiempo! Ganaste " + fmtMoney(earned);
         if (grabbed === 0 && reason !== "todas") msg += " 😅 (no agarraste cajitas)";
@@ -374,7 +491,7 @@
      ============================================================ */
   var QUESTIONS = [
     { q: "¿En qué país nació la reina Isabel II?", opts: ["Inglaterra", "Brasil", "Japón"], a: 0 },
-    { q: "¿De qué color es el vestido de la muñeca?", opts: ["Azul", "Rojo", "Verde"], a: 1 },
+    { q: "¿De qué color es el vestido de la muñeca principal?", opts: ["Rojo", "Azul", "Verde"], a: 0, dress: true },
     { q: "¿Cuántas puertas hay en el juego de Puertas?", opts: ["10", "30", "100"], a: 1 },
     { q: "¿Qué animal hace 'miau'?", opts: ["Perro", "Gato", "Vaca"], a: 1 },
     { q: "¿Cuánto es 2 + 2?", opts: ["3", "4", "5"], a: 1 },
@@ -407,10 +524,13 @@
       return;
     }
     var item = quiz.order[quiz.index];
+    var dressHint = item.dress
+      ? "<br><small style='color:#c0392b;font-weight:bold'>👗 La muñeca principal (Isabella) del inicio lleva vestido rojo</small>"
+      : "";
     if (currentTheme === "gracioso") {
-      $("quizBubble").innerHTML = "😠 ¡Estoy enojado! Alégrame: " + item.q + "<br><small>(o dame mi peluche 🧸 / baila macarena 💃)</small>";
+      $("quizBubble").innerHTML = "😠 ¡Estoy enojado! Alégrame: " + item.q + dressHint + "<br><small>(o dame mi peluche 🧸 / baila macarena 💃)</small>";
     } else {
-      $("quizBubble").textContent = item.q;
+      $("quizBubble").innerHTML = item.q + dressHint;
     }
     var opts = $("quizOptions");
     opts.innerHTML = "";
@@ -453,7 +573,8 @@
   function cheerClown(how) {
     if (preguntasCtrl && preguntasCtrl.setMood) preguntasCtrl.setMood("dance");
     if (how === "macarena") {
-      $("quizBubble").textContent = "🤡 ¡Jajaja! ¡Bailas la macarena súper bien! 💃🕺";
+      showMacarenaBanner(3500);
+      $("quizBubble").textContent = "🤡 ¡Jajaja! ¡MACARENA! 💃🕺 ¡Bailas súper bien!";
     } else {
       $("quizBubble").textContent = "🤡 ¡Mi peluche! 🧸 ¡Gracias, ya no estoy enojado! 😄";
     }
@@ -576,18 +697,295 @@
   }
 
   /* ============================================================
+     MODO MEDIO — ENFRENTAMIENTO
+     ============================================================ */
+  function initEnfrentamiento() {
+    $("enfrentamientoResult").classList.add("hidden");
+    $("btnEnfrentamientoRetry").classList.add("hidden");
+    $("btnEnfrentamientoOtra").classList.add("hidden");
+    $("enfrentamientoRange").classList.add("hidden");
+    $("enfrentamientoInfo").textContent = "¡Corta la cabeza del monstruo morado cuando esté cerca! 🔪";
+    $("enfrentamientoTimer").textContent = "12";
+
+    enfrentamientoCtrl = ATScenes.go("enfrentamiento", {
+      skinId: state.selectedSkin,
+      onHud: function (time, inRange) {
+        $("enfrentamientoTimer").textContent = time;
+        $("enfrentamientoRange").classList.toggle("hidden", !inRange);
+      },
+      onWin: function () {
+        state.medioEnfrentamientoWon = true;
+        state.coins += 500;
+        saveState();
+        $("enfrentamientoResultText").textContent = "🏆 ¡Le cortaste la cabeza! +500 monedas 💰";
+        $("enfrentamientoResult").classList.remove("hidden");
+        $("btnEnfrentamientoOtra").classList.remove("hidden");
+        $("enfrentamientoInfo").textContent = "¡Lo lograste! Ahora puedes jugar Pintar Igual 🎨";
+        bigMessage("✂️ ¡CABEZA CORTADA! 🎉<br><span style='font-size:20px'>+500 monedas</span>", 2200);
+      },
+      onLose: function () {
+        state.coins = Math.max(0, state.coins - 1000);
+        saveState();
+        showScare(2800, "BU BU BU", "terror-funny");
+        setTimeout(function () {
+          bigMessage(
+            "😱 <b>PIERDES</b><br><span style='font-size:20px'>-1000 puntos 💸</span><br><br>💻 Inténtalo otra vez",
+            0
+          );
+        }, 1200);
+        $("enfrentamientoResultText").textContent = "PIERDES — -1000 puntos 😱";
+        $("enfrentamientoResult").classList.remove("hidden");
+        $("btnEnfrentamientoRetry").classList.remove("hidden");
+        $("enfrentamientoInfo").textContent = "No llegaste a tiempo... ¡Inténtalo otra vez!";
+      }
+    });
+  }
+
+  function doKnifeAttack() {
+    var btn = $("btnKnifeAttack");
+    if (btn) {
+      btn.classList.remove("swing");
+      void btn.offsetWidth;
+      btn.classList.add("swing");
+    }
+    if (enfrentamientoCtrl && enfrentamientoCtrl.tryAttack) enfrentamientoCtrl.tryAttack();
+  }
+
+  /* ============================================================
+     MODO MEDIO — CARRERA META
+     ============================================================ */
+  function initCarreraMeta() {
+    $("carrerametaOver").classList.add("hidden");
+    $("btnCarrerametaRetry").classList.add("hidden");
+    $("carrerametaInfo").textContent = "¡Corre hasta la meta! Salta obstáculos y agarra cajitas 📦";
+    $("carrerametaBoxes").textContent = "0/5";
+    $("carrerametaDist").textContent = "0";
+
+    carrerametaCtrl = ATScenes.go("carrerameta", {
+      skinId: state.selectedSkin,
+      onHud: function (grabbed, total, dist) {
+        $("carrerametaBoxes").textContent = grabbed + "/" + total;
+        $("carrerametaDist").textContent = dist;
+      },
+      onFinish: function (reason, grabbed, total) {
+        var msg;
+        if (reason === "meta") {
+          var bonus = 200 + grabbed * 100;
+          state.coins += bonus;
+          saveState();
+          msg = "🏁 ¡LLEGASTE A LA META! +" + fmtMoney(bonus) + " 🎉";
+          bigMessage("🏁 ¡META! 🎉<br>Cajitas: " + grabbed + "/" + total, 2000);
+        } else {
+          msg = "😱 ¡Te atrapó el monstruo! PIERDES";
+          showScare(2000, "BU BU BU", "terror-funny");
+        }
+        $("carrerametaResult").textContent = msg;
+        $("carrerametaOver").classList.remove("hidden");
+        $("btnCarrerametaRetry").classList.remove("hidden");
+      }
+    });
+  }
+
+  function runnerJump() {
+    if (carrerametaCtrl && carrerametaCtrl.jump) carrerametaCtrl.jump();
+  }
+
+  /* ============================================================
+     MODO MEDIO — PINTAR IGUAL
+     ============================================================ */
+  var PAINT_SHAPES = ["circle", "star", "face", "blob"];
+
+  function initPintar() {
+    $("pintarResult").classList.add("hidden");
+    $("btnPintarOtra").classList.add("hidden");
+    if (!state.medioEnfrentamientoWon) {
+      $("pintarInfo").textContent = "⚠️ Primero debes pasar Enfrentamiento (Nivel 1)";
+    } else {
+      $("pintarInfo").textContent = "Copia la figura del monstruo en tu lienzo ✏️";
+    }
+
+    pintarCtrl = ATScenes.go("pintar", {});
+
+    currentPaintShape = pick(PAINT_SHAPES);
+    var refColor = pick(["#e0241b", "#b388ff", "#ff79c6", "#4db8ff", "#ffd54f"]);
+    paintColor = refColor;
+    drawPaintRef(currentPaintShape, refColor);
+    clearPaintDraw();
+    updatePaintColorUI();
+  }
+
+  function drawPaintRef(shape, color) {
+    var canvas = $("paintRef");
+    if (!canvas) return;
+    var ctx = canvas.getContext("2d");
+    var w = canvas.width, h = canvas.height;
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = color;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 3;
+    var cx = w / 2, cy = h / 2;
+    if (shape === "circle") {
+      ctx.beginPath();
+      ctx.arc(cx, cy, 50, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (shape === "star") {
+      drawStar(ctx, cx, cy, 5, 52, 22);
+      ctx.fill();
+    } else if (shape === "face") {
+      ctx.beginPath();
+      ctx.arc(cx, cy, 48, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#fff";
+      ctx.beginPath(); ctx.arc(cx - 18, cy - 10, 10, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(cx + 18, cy - 10, 10, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#111";
+      ctx.beginPath(); ctx.arc(cx - 18, cy - 10, 5, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(cx + 18, cy - 10, 5, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "#111";
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(cx, cy + 12, 22, 0.1 * Math.PI, 0.9 * Math.PI); ctx.stroke();
+    } else {
+      ctx.beginPath();
+      ctx.moveTo(cx - 40, cy);
+      ctx.bezierCurveTo(cx - 50, cy - 55, cx + 50, cy - 45, cx + 42, cy + 10);
+      ctx.bezierCurveTo(cx + 30, cy + 55, cx - 30, cy + 50, cx - 40, cy);
+      ctx.fill();
+    }
+  }
+
+  function drawStar(ctx, cx, cy, spikes, outerR, innerR) {
+    var rot = Math.PI / 2 * 3;
+    var step = Math.PI / spikes;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - outerR);
+    for (var i = 0; i < spikes; i++) {
+      ctx.lineTo(cx + Math.cos(rot) * outerR, cy + Math.sin(rot) * outerR);
+      rot += step;
+      ctx.lineTo(cx + Math.cos(rot) * innerR, cy + Math.sin(rot) * innerR);
+      rot += step;
+    }
+    ctx.lineTo(cx, cy - outerR);
+    ctx.closePath();
+  }
+
+  function clearPaintDraw() {
+    var canvas = $("paintDraw");
+    if (!canvas) return;
+    var ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
+
+  function updatePaintColorUI() {
+    Array.prototype.slice.call(document.querySelectorAll(".paint-color")).forEach(function (btn) {
+      btn.classList.toggle("selected", btn.dataset.color === paintColor);
+    });
+  }
+
+  function paintAt(canvas, x, y) {
+    var ctx = canvas.getContext("2d");
+    ctx.fillStyle = paintColor;
+    ctx.beginPath();
+    ctx.arc(x, y, 8, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  function getCanvasPos(canvas, e) {
+    var r = canvas.getBoundingClientRect();
+    var sx = canvas.width / r.width;
+    var sy = canvas.height / r.height;
+    var cx = e.clientX != null ? e.clientX : (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
+    var cy = e.clientY != null ? e.clientY : (e.touches && e.touches[0] ? e.touches[0].clientY : 0);
+    return { x: (cx - r.left) * sx, y: (cy - r.top) * sy };
+  }
+
+  function bindPaintCanvas() {
+    var canvas = $("paintDraw");
+    if (!canvas) return;
+    function start(e) { e.preventDefault(); paintDrawing = true; paintAt(canvas, getCanvasPos(canvas, e).x, getCanvasPos(canvas, e).y); }
+    function move(e) {
+      if (!paintDrawing) return;
+      e.preventDefault();
+      var p = getCanvasPos(canvas, e);
+      paintAt(canvas, p.x, p.y);
+    }
+    function end() { paintDrawing = false; }
+    canvas.addEventListener("pointerdown", start);
+    canvas.addEventListener("pointermove", move);
+    canvas.addEventListener("pointerup", end);
+    canvas.addEventListener("pointerleave", end);
+  }
+
+  function comparePaintCanvases() {
+    if (!state.medioEnfrentamientoWon) {
+      bigMessage(
+        "⚠️ Tienes que pasar por el primer nivel<br><span style='font-size:18px'>¡Juega <b>Enfrentamiento</b> primero!</span>",
+        3200
+      );
+      setTimeout(function () { showScreen("enfrentamiento"); }, 1500);
+      return;
+    }
+    var ref = $("paintRef");
+    var draw = $("paintDraw");
+    if (!ref || !draw) return;
+    var size = 32;
+    var tmpRef = document.createElement("canvas");
+    var tmpDraw = document.createElement("canvas");
+    tmpRef.width = tmpDraw.width = size;
+    tmpRef.height = tmpDraw.height = size;
+    tmpRef.getContext("2d").drawImage(ref, 0, 0, size, size);
+    tmpDraw.getContext("2d").drawImage(draw, 0, 0, size, size);
+    var refData = tmpRef.getContext("2d").getImageData(0, 0, size, size).data;
+    var drawData = tmpDraw.getContext("2d").getImageData(0, 0, size, size).data;
+    var refFilled = 0, drawFilled = 0, overlap = 0;
+    for (var i = 0; i < refData.length; i += 4) {
+      var rFill = refData[i] < 240 || refData[i + 1] < 240 || refData[i + 2] < 240;
+      var dFill = drawData[i] < 240 || drawData[i + 1] < 240 || drawData[i + 2] < 240;
+      if (rFill) refFilled++;
+      if (dFill) drawFilled++;
+      if (rFill && dFill) overlap++;
+    }
+    var score = refFilled > 0 ? overlap / refFilled : 0;
+    var drawRatio = refFilled > 0 ? drawFilled / refFilled : 0;
+    var passed = score >= 0.35 && drawRatio >= 0.25 && drawRatio <= 2.5;
+
+    if (passed) {
+      state.coins += 800;
+      saveState();
+      $("pintarResultText").textContent = "🎨 ¡Lo pintaste igual! +800 monedas";
+      $("pintarResult").classList.remove("hidden");
+      $("btnPintarOtra").classList.remove("hidden");
+      bigMessage("🎨 ¡Lo pintaste igual! 🎉<br>+800 monedas 💰", 2500);
+    } else {
+      $("pintarResultText").textContent = "😅 No quedó igual... ¡Inténtalo otra vez!";
+      $("pintarResult").classList.remove("hidden");
+      bigMessage("😅 Casi... pinta más parecido a la figura", 2200);
+    }
+  }
+
+  /* ============================================================
      ENTRADA / EVENTOS
      ============================================================ */
   function bindEvents() {
     $("btnJugar").addEventListener("click", function () { showScreen("tema"); });
 
+    var introOv = $("introOverlay");
+    if (introOv) introOv.addEventListener("click", skipIntro);
+    var gl = $("gl");
+    if (gl) gl.addEventListener("click", function () {
+      if (currentScreen === "inicio") skipIntro();
+    });
+
     $("btnTemaTerror").addEventListener("click", function () { setTheme("terror"); showScreen("menu"); });
     $("btnTemaGracioso").addEventListener("click", function () { setTheme("gracioso"); showScreen("menu"); });
+    $("btnTemaMedio").addEventListener("click", function () { setTheme("medio"); showScreen("menu"); });
 
     Array.prototype.slice.call(document.querySelectorAll(".menu-card")).forEach(function (card) {
       card.addEventListener("click", function () { showScreen(card.dataset.go); });
     });
     $("btnCambiarTema").addEventListener("click", function () { showScreen("tema"); });
+    $("btnCambiarTemaMedio").addEventListener("click", function () { showScreen("tema"); });
 
     $("btnHome").addEventListener("click", function () { screenHistory = []; showScreen("inicio", true); });
     $("btnBack").addEventListener("click", goBack);
@@ -604,6 +1002,24 @@
     });
     $("btnCarreraOtra").addEventListener("click", initCarrera);
     $("btnPreguntasOtra").addEventListener("click", initPreguntas);
+
+    $("btnKnifeAttack").addEventListener("click", doKnifeAttack);
+    $("btnEnfrentamientoRetry").addEventListener("click", function () { hideBigMessage(); initEnfrentamiento(); });
+    $("btnEnfrentamientoOtra").addEventListener("click", initEnfrentamiento);
+
+    $("btnRunnerJump").addEventListener("pointerdown", function (e) { e.preventDefault(); runnerJump(); });
+    $("btnCarrerametaRetry").addEventListener("click", initCarreraMeta);
+
+    $("btnPaintCheck").addEventListener("click", comparePaintCanvases);
+    $("btnPaintClear").addEventListener("click", clearPaintDraw);
+    $("btnPintarOtra").addEventListener("click", initPintar);
+    Array.prototype.slice.call(document.querySelectorAll(".paint-color")).forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        paintColor = btn.dataset.color;
+        updatePaintColorUI();
+      });
+    });
+    bindPaintCanvas();
 
     $("bigMsg").addEventListener("click", hideBigMessage);
     $("scareOverlay").addEventListener("click", hideScare);
@@ -628,9 +1044,19 @@
     ArrowUp: "up", ArrowDown: "down", ArrowLeft: "left", ArrowRight: "right",
     w: "up", s: "down", a: "left", d: "right", W: "up", S: "down", A: "left", D: "right"
   };
-  function movableScreen() { return currentScreen === "carrera" || currentScreen === "escondite"; }
+  function movableScreen() {
+    return currentScreen === "carrera" || currentScreen === "escondite" || currentScreen === "carrerameta";
+  }
   function onKeyDown(e) {
     if (KEYMAP[e.key] && movableScreen()) { e.preventDefault(); ATScenes.setMove(KEYMAP[e.key], true); }
+    if ((e.key === " " || e.key === "ArrowUp") && currentScreen === "carrerameta") {
+      e.preventDefault();
+      runnerJump();
+    }
+    if ((e.key === " " || e.key === "Enter") && currentScreen === "enfrentamiento") {
+      e.preventDefault();
+      doKnifeAttack();
+    }
   }
   function onKeyUp(e) {
     if (KEYMAP[e.key] && movableScreen()) ATScenes.setMove(KEYMAP[e.key], false);
